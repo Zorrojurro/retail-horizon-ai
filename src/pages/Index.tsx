@@ -5,6 +5,8 @@ import { FileUpload } from "@/components/FileUpload";
 import { ForecastResults } from "@/components/ForecastResults";
 import { Toaster } from "sonner";
 import { ThemeProvider } from "@/hooks/use-theme";
+import { Button } from "@/components/ui/button";
+import { ArrowLeft } from "lucide-react";
 
 const Index = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -18,14 +20,17 @@ const Index = () => {
     // Simulate AI processing time
     setTimeout(() => {
       setData(loadedData);
-      
-      // In a production app, we'd send this data to a backend for AI processing
-      // For demo purposes, we're just using the same data
       setForecast(loadedData);
-      
       setDataLoaded(true);
       setIsLoading(false);
     }, 1500);
+  };
+
+  const handleReset = () => {
+    setData([]);
+    setForecast([]);
+    setDataLoaded(false);
+    setIsLoading(false);
   };
 
   return (
@@ -51,7 +56,20 @@ const Index = () => {
             {!dataLoaded ? (
               <FileUpload onDataLoaded={handleDataLoaded} isLoading={isLoading} />
             ) : (
-              <ForecastResults data={data} forecast={forecast} />
+              <>
+                <div className="flex items-center justify-between mb-6">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-2"
+                    onClick={handleReset}
+                  >
+                    <ArrowLeft className="h-4 w-4" />
+                    Upload Another File
+                  </Button>
+                </div>
+                <ForecastResults data={data} forecast={forecast} />
+              </>
             )}
           </div>
         </main>
