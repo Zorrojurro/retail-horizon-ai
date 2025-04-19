@@ -8,19 +8,46 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ArrowLeft } from "lucide-react";
 import { ThemeProvider } from "@/hooks/use-theme";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/components/ui/use-toast";
 
 const Dashboard = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [data, setData] = useState<any[]>([]);
   const [forecast, setForecast] = useState<any[]>([]);
   const [dataLoaded, setDataLoaded] = useState(false);
+  const [currentFile, setCurrentFile] = useState<string>("");
+  const { toast } = useToast();
 
-  const handleDataLoaded = (loadedData: any[]) => {
+  const handleDataLoaded = async (loadedData: any[], filename: string) => {
     setIsLoading(true);
-    setTimeout(() => {
+    setCurrentFile(filename);
+    
+    setTimeout(async () => {
       setData(loadedData);
       setForecast(loadedData);
       setDataLoaded(true);
+      
+      try {
+        await supabase.from('predictions').insert({
+          filename,
+          data: loadedData,
+          forecast: loadedData
+        });
+        
+        toast({
+          title: "Prediction saved",
+          description: "Your prediction has been saved and will appear in the history."
+        });
+      } catch (error) {
+        console.error('Error saving prediction:', error);
+        toast({
+          title: "Error",
+          description: "Failed to save the prediction.",
+          variant: "destructive"
+        });
+      }
+      
       setIsLoading(false);
     }, 1500);
   };
@@ -30,6 +57,7 @@ const Dashboard = () => {
     setForecast([]);
     setDataLoaded(false);
     setIsLoading(false);
+    setCurrentFile("");
   };
 
   return (
