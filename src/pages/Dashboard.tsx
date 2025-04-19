@@ -79,7 +79,7 @@ const Dashboard = () => {
               <TabsContent value="history" className="mt-6">
                 <PredictionHistory />
               </TabsContent>
-            </TabsList>
+            </Tabs>
           </div>
         </main>
       </div>
