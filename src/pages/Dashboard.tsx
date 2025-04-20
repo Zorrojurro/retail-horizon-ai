@@ -19,47 +19,63 @@ const Dashboard = () => {
   const [dataLoaded, setDataLoaded] = useState(false);
   const [currentFile, setCurrentFile] = useState<string>("");
   const [activeTab, setActiveTab] = useState("upload");
+  const [isForecastLoading, setIsForecastLoading] = useState(false);
+  const [modelMetadata, setModelMetadata] = useState<any>(null);
   const { toast } = useToast();
   const { user } = useAuth();
 
   const handleDataLoaded = async (loadedData: any[], filename: string) => {
     setIsLoading(true);
     setCurrentFile(filename);
+    setData(loadedData);
     
-    setTimeout(async () => {
-      setData(loadedData);
-      setForecast(loadedData);
+    try {
+      // Call the demand forecasting edge function
+      setIsForecastLoading(true);
+      
+      const { data: forecastResponse, error } = await supabase.functions.invoke('demand-forecast', {
+        body: { data: loadedData }
+      });
+      
+      if (error) throw error;
+      
+      setForecast(forecastResponse.forecast);
+      setModelMetadata(forecastResponse.metadata);
       setDataLoaded(true);
       
-      try {
-        await supabase.from('predictions').insert({
-          filename,
-          data: loadedData,
-          forecast: loadedData,
-          user_id: user?.id
-        });
-        
-        toast({
-          title: "Prediction saved",
-          description: "Your prediction has been saved and will appear in the history."
-        });
-      } catch (error) {
-        console.error('Error saving prediction:', error);
-        toast({
-          title: "Error",
-          description: "Failed to save the prediction.",
-          variant: "destructive"
-        });
-      }
+      // Save the prediction to the database
+      await supabase.from('predictions').insert({
+        filename,
+        data: loadedData,
+        forecast: forecastResponse.forecast,
+        metadata: forecastResponse.metadata,
+        user_id: user?.id
+      });
       
+      toast({
+        title: "Forecast generated",
+        description: "Your AI-powered forecast has been saved and is ready to view."
+      });
+    } catch (error) {
+      console.error('Error generating forecast:', error);
+      toast({
+        title: "Forecasting Error",
+        description: "There was a problem generating your forecast. Please try again.",
+        variant: "destructive"
+      });
+      // Use original data as fallback
+      setForecast(loadedData);
+    } finally {
+      setIsForecastLoading(false);
       setIsLoading(false);
-    }, 1500);
+    }
   };
 
-  const handleViewPrediction = (predictionData: any[], predictionForecast: any[], filename: string) => {
+  const handleViewPrediction = (predictionData: any[], predictionForecast: any[], filename: string, metadata?: any) => {
     setData(predictionData);
     setForecast(predictionForecast);
     setCurrentFile(filename);
+    setModelMetadata(metadata);
     setDataLoaded(true);
     setActiveTab("upload");
   };
@@ -70,6 +86,7 @@ const Dashboard = () => {
     setDataLoaded(false);
     setIsLoading(false);
     setCurrentFile("");
+    setModelMetadata(null);
   };
 
   return (
@@ -110,8 +127,18 @@ const Dashboard = () => {
                         <ArrowLeft className="h-4 w-4" />
                         Upload Another File
                       </Button>
+                      {isForecastLoading && (
+                        <div className="text-sm text-muted-foreground">
+                          Generating AI forecast for the Indian market...
+                        </div>
+                      )}
                     </div>
-                    <ForecastResults data={data} forecast={forecast} />
+                    <ForecastResults 
+                      data={data} 
+                      forecast={forecast} 
+                      metadata={modelMetadata}
+                      isLoading={isForecastLoading}
+                    />
                   </>
                 )}
               </TabsContent>

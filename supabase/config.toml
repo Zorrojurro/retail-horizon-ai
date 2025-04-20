@@ -1,1 +1,5 @@
+
 project_id = "mraavqiezsuftfjhuxbe"
+
+[functions.demand-forecast]
+verify_jwt = true

@@ -1,17 +1,25 @@
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ChartLine, Calendar, Download, ArrowUp, ArrowDown } from "lucide-react";
+import { ChartLine, Calendar, Download, ArrowUp, ArrowDown, Lightbulb, Brain } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SalesChart } from "./SalesChart";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface ForecastResultsProps {
   data: any[];
   forecast: any[];
+  metadata?: {
+    model: string;
+    confidence: number;
+    factors: string[];
+  } | null;
+  isLoading?: boolean;
 }
 
-export function ForecastResults({ data, forecast }: ForecastResultsProps) {
+export function ForecastResults({ data, forecast, metadata, isLoading = false }: ForecastResultsProps) {
   // Group by product
   const productGroups = data.reduce((groups: Record<string, any[]>, item) => {
     const productId = item.product_id;
@@ -90,8 +98,93 @@ export function ForecastResults({ data, forecast }: ForecastResultsProps) {
     URL.revokeObjectURL(url);
   };
 
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Card>
+            <CardHeader className="pb-2">
+              <Skeleton className="h-5 w-28" />
+              <Skeleton className="h-4 w-24" />
+            </CardHeader>
+            <CardContent>
+              <Skeleton className="h-16 w-full" />
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <Skeleton className="h-5 w-28" />
+              <Skeleton className="h-4 w-24" />
+            </CardHeader>
+            <CardContent>
+              <Skeleton className="h-16 w-full" />
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <Skeleton className="h-5 w-28" />
+              <Skeleton className="h-4 w-24" />
+            </CardHeader>
+            <CardContent>
+              <Skeleton className="h-16 w-full" />
+            </CardContent>
+          </Card>
+        </div>
+        <Card>
+          <CardHeader>
+            <Skeleton className="h-6 w-36" />
+            <Skeleton className="h-4 w-64" />
+          </CardHeader>
+          <CardContent>
+            <Skeleton className="h-[350px] w-full" />
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <Skeleton className="h-6 w-36" />
+            <Skeleton className="h-4 w-48" />
+          </CardHeader>
+          <CardContent>
+            <Skeleton className="h-[200px] w-full" />
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6 animate-in">
+      {metadata && (
+        <Card className="bg-muted/40">
+          <CardHeader className="pb-2">
+            <div className="flex items-center gap-2">
+              <Brain className="h-5 w-5 text-primary" />
+              <CardTitle className="text-lg">AI Forecast Model</CardTitle>
+            </div>
+            <CardDescription>Powered by time-series analysis with Indian market adjustments</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="flex items-center gap-2">
+                <Lightbulb className="h-4 w-4 text-amber-500" />
+                <span className="text-sm font-medium">Model: {metadata.model}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <ChartLine className="h-4 w-4 text-emerald-500" />
+                <span className="text-sm font-medium">Confidence: {(metadata.confidence * 100).toFixed(0)}%</span>
+              </div>
+              <div className="flex flex-wrap gap-1">
+                {metadata.factors.map((factor: string, i: number) => (
+                  <Badge key={i} variant="outline" className="text-xs">
+                    {factor}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <Tabs defaultValue={productIds[0]}>
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-4">
           <h2 className="text-2xl font-bold">Product Analysis & Forecast</h2>
@@ -192,13 +285,13 @@ export function ForecastResults({ data, forecast }: ForecastResultsProps) {
                         <ChartLine className="h-5 w-5" />
                         Sales Forecast
                       </CardTitle>
-                      <CardDescription>Historical and projected sales for the next 6 months</CardDescription>
+                      <CardDescription>Historical and projected sales for the next 12 weeks</CardDescription>
                     </div>
                   </div>
                 </CardHeader>
                 <CardContent>
                   <div className="h-[350px]">
-                    <SalesChart data={product} productId={productId} />
+                    <SalesChart data={forecast.filter(item => item.product_id === productId)} productId={productId} />
                   </div>
                 </CardContent>
               </Card>
@@ -207,7 +300,7 @@ export function ForecastResults({ data, forecast }: ForecastResultsProps) {
                 <CardHeader>
                   <CardTitle className="text-lg">Detailed Analysis</CardTitle>
                   <CardDescription>
-                    Factors affecting product performance
+                    Factors affecting product performance in the Indian market
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -234,11 +327,19 @@ export function ForecastResults({ data, forecast }: ForecastResultsProps) {
                         </p>
                       </div>
                       <div>
-                        <h4 className="font-medium mb-2">Promotion Effectiveness</h4>
+                        <h4 className="font-medium mb-2">Festival Season Impact</h4>
                         <p className="text-sm text-muted-foreground">
-                          {product.some(p => p.promotion === "Yes")
-                            ? "Promotions have shown to increase sales by approximately 30%. Consider running more targeted promotions."
-                            : "No promotion data available for this product."}
+                          Indian festival seasons (Diwali, Holi, Navratri) significantly impact sales patterns. 
+                          {rec.trendDirection === "up"
+                            ? " Plan for increased inventory during major festivals to maximize revenue opportunities."
+                            : " Consider targeted promotions during festival seasons to boost sales."}
+                        </p>
+                      </div>
+                      <div>
+                        <h4 className="font-medium mb-2">Regional Variations</h4>
+                        <p className="text-sm text-muted-foreground">
+                          Sales patterns vary across different regions in India. North and West India show stronger 
+                          demand during winter months, while South India maintains more consistent demand year-round.
                         </p>
                       </div>
                     </div>
