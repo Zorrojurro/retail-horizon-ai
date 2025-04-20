@@ -3,10 +3,11 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { FileSearch, Calendar } from "lucide-react";
+import { FileSearch, Calendar, Eye } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { format } from "date-fns";
 import { Json } from "@/integrations/supabase/types";
+import { Button } from "./ui/button";
 
 interface Prediction {
   id: string;
@@ -17,7 +18,11 @@ interface Prediction {
   user_id?: string;
 }
 
-export function PredictionHistory() {
+interface PredictionHistoryProps {
+  onViewPrediction: (data: any[], forecast: any[], filename: string) => void;
+}
+
+export function PredictionHistory({ onViewPrediction }: PredictionHistoryProps) {
   const [predictions, setPredictions] = useState<Prediction[]>([]);
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
@@ -36,12 +41,20 @@ export function PredictionHistory() {
         return;
       }
 
-      setPredictions(data as Prediction[]);
+      setPredictions(data);
       setLoading(false);
     }
 
     fetchPredictions();
   }, [user]);
+
+  const handleViewPrediction = (prediction: Prediction) => {
+    onViewPrediction(
+      prediction.data as any[],
+      prediction.forecast as any[],
+      prediction.filename
+    );
+  };
 
   if (loading) {
     return (
@@ -71,6 +84,7 @@ export function PredictionHistory() {
               <TableHead>File Name</TableHead>
               <TableHead>Date</TableHead>
               <TableHead>Predictions</TableHead>
+              <TableHead>Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -89,6 +103,17 @@ export function PredictionHistory() {
                     : typeof prediction.forecast === 'object' 
                       ? Object.keys(prediction.forecast).length 
                       : 0} months
+                </TableCell>
+                <TableCell>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleViewPrediction(prediction)}
+                    className="flex items-center gap-2"
+                  >
+                    <Eye className="h-4 w-4" />
+                    View
+                  </Button>
                 </TableCell>
               </TableRow>
             ))}

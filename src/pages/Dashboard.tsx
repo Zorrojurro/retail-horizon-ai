@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Header } from "@/components/Header";
 import { FileUpload } from "@/components/FileUpload";
@@ -55,6 +54,13 @@ const Dashboard = () => {
     }, 1500);
   };
 
+  const handleViewPrediction = (predictionData: any[], predictionForecast: any[], filename: string) => {
+    setData(predictionData);
+    setForecast(predictionForecast);
+    setCurrentFile(filename);
+    setDataLoaded(true);
+  };
+
   const handleReset = () => {
     setData([]);
     setForecast([]);
@@ -108,7 +114,7 @@ const Dashboard = () => {
               </TabsContent>
 
               <TabsContent value="history" className="mt-6">
-                <PredictionHistory />
+                <PredictionHistory onViewPrediction={handleViewPrediction} />
               </TabsContent>
             </Tabs>
           </div>
