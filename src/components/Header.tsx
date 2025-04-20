@@ -4,13 +4,28 @@ import { ThemeToggle } from "./ThemeToggle";
 import { Button } from "./ui/button";
 import { LogOut } from "lucide-react";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/use-auth";
 
 export function Header() {
   const navigate = useNavigate();
+  const { user } = useAuth();
 
-  const handleLogout = () => {
-    toast.success("Successfully logged out!");
-    navigate("/login");
+  const handleLogout = async () => {
+    try {
+      const { error } = await supabase.auth.signOut();
+      
+      if (error) {
+        toast.error(error.message);
+        return;
+      }
+      
+      toast.success("Successfully logged out!");
+      navigate("/login");
+    } catch (error) {
+      console.error("Logout error:", error);
+      toast.error("Failed to log out. Please try again.");
+    }
   };
 
   return (
@@ -25,6 +40,11 @@ export function Header() {
           </div>
         </div>
         <div className="flex items-center gap-4">
+          {user && (
+            <div className="text-sm text-muted-foreground">
+              {user.email}
+            </div>
+          )}
           <ThemeToggle />
           <Button variant="outline" size="sm" onClick={handleLogout} className="gap-2">
             <LogOut className="h-4 w-4" />

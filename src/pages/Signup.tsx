@@ -5,17 +5,51 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { UserPlus } from "lucide-react";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
+import { Form, FormControl, FormField, FormItem, FormMessage } from "@/components/ui/form";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+
+const signupSchema = z.object({
+  email: z.string().email("Please enter a valid email address"),
+  password: z.string().min(6, "Password must be at least 6 characters")
+});
 
 const Signup = () => {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
 
-  const handleSignup = async (e: React.FormEvent) => {
-    e.preventDefault();
-    // Simulate signup success for demo
-    toast.success("Account created successfully!");
-    navigate("/login");
+  const form = useForm<z.infer<typeof signupSchema>>({
+    resolver: zodResolver(signupSchema),
+    defaultValues: {
+      email: "",
+      password: ""
+    }
+  });
+
+  const handleSignup = async (values: z.infer<typeof signupSchema>) => {
+    try {
+      setIsLoading(true);
+      
+      const { error } = await supabase.auth.signUp({
+        email: values.email,
+        password: values.password
+      });
+
+      if (error) {
+        toast.error(error.message);
+        return;
+      }
+
+      toast.success("Account created successfully! Please check your email for verification.");
+      navigate("/login");
+    } catch (error) {
+      console.error("Signup error:", error);
+      toast.error("Failed to sign up. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -30,26 +64,52 @@ const Signup = () => {
           </p>
         </div>
 
-        <form onSubmit={handleSignup} className="space-y-4">
-          <div className="space-y-2">
-            <Input
-              type="email"
-              placeholder="Email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
-            <Input
-              type="password"
-              placeholder="Password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
-          </div>
-          <Button type="submit" className="w-full gap-2">
-            <UserPlus className="h-4 w-4" />
-            Sign Up
-          </Button>
-        </form>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(handleSignup)} className="space-y-4">
+            <div className="space-y-2">
+              <FormField
+                control={form.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormControl>
+                      <Input
+                        type="email"
+                        placeholder="Email"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="password"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormControl>
+                      <Input
+                        type="password"
+                        placeholder="Password"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+            <Button type="submit" className="w-full gap-2" disabled={isLoading}>
+              {isLoading ? "Creating account..." : (
+                <>
+                  <UserPlus className="h-4 w-4" />
+                  Sign Up
+                </>
+              )}
+            </Button>
+          </form>
+        </Form>
 
         <div className="text-center text-sm">
           Already have an account?{" "}
