@@ -17,6 +17,7 @@ const Dashboard = () => {
   const [forecast, setForecast] = useState<any[]>([]);
   const [dataLoaded, setDataLoaded] = useState(false);
   const [currentFile, setCurrentFile] = useState<string>("");
+  const [activeTab, setActiveTab] = useState("upload");
   const { toast } = useToast();
   const { user } = useAuth();
 
@@ -59,6 +60,7 @@ const Dashboard = () => {
     setForecast(predictionForecast);
     setCurrentFile(filename);
     setDataLoaded(true);
+    setActiveTab("upload");
   };
 
   const handleReset = () => {
@@ -75,7 +77,7 @@ const Dashboard = () => {
         <Header />
         <main className="flex-1 container py-8">
           <div className="max-w-6xl mx-auto space-y-10">
-            <Tabs defaultValue="upload" className="w-full">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
               <TabsList className="grid w-full max-w-md mx-auto grid-cols-2">
                 <TabsTrigger value="upload">New Prediction</TabsTrigger>
                 <TabsTrigger value="history">History</TabsTrigger>
