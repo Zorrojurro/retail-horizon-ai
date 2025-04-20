@@ -6,13 +6,15 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { FileSearch, Calendar } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { format } from "date-fns";
+import { Json } from "@/integrations/supabase/types";
 
 interface Prediction {
   id: string;
   filename: string;
   created_at: string;
-  data: any[];
-  forecast: any[];
+  data: Json;
+  forecast: Json;
+  user_id?: string;
 }
 
 export function PredictionHistory() {
@@ -34,7 +36,7 @@ export function PredictionHistory() {
         return;
       }
 
-      setPredictions(data);
+      setPredictions(data as Prediction[]);
       setLoading(false);
     }
 
@@ -81,7 +83,13 @@ export function PredictionHistory() {
                     {format(new Date(prediction.created_at), 'yyyy-MM-dd')}
                   </div>
                 </TableCell>
-                <TableCell>{prediction.forecast.length} months</TableCell>
+                <TableCell>
+                  {Array.isArray(prediction.forecast) 
+                    ? prediction.forecast.length 
+                    : typeof prediction.forecast === 'object' 
+                      ? Object.keys(prediction.forecast).length 
+                      : 0} months
+                </TableCell>
               </TableRow>
             ))}
           </TableBody>

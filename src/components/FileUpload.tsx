@@ -36,7 +36,7 @@ const sampleData = `date,product_id,product_name,units_sold,price,season,holiday
 2023-06-25,001,Coffee Maker,10,99.99,Summer,None,No,Hot,109.99`;
 
 interface FileUploadProps {
-  onDataLoaded: (data: any[]) => void;
+  onDataLoaded: (data: any[], filename: string) => void;
   isLoading: boolean;
 }
 
@@ -61,7 +61,7 @@ export function FileUpload({ onDataLoaded, isLoading }: FileUploadProps) {
         try {
           const text = event.target?.result as string;
           const data = parseCSV(text);
-          onDataLoaded(data);
+          onDataLoaded(data, selectedFile.name);
           toast.success("Data loaded successfully");
         } catch (error) {
           console.error("Error parsing CSV:", error);

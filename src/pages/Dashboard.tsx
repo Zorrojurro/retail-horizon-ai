@@ -10,6 +10,7 @@ import { ArrowLeft } from "lucide-react";
 import { ThemeProvider } from "@/hooks/use-theme";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
+import { useAuth } from "@/hooks/use-auth";
 
 const Dashboard = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -18,6 +19,7 @@ const Dashboard = () => {
   const [dataLoaded, setDataLoaded] = useState(false);
   const [currentFile, setCurrentFile] = useState<string>("");
   const { toast } = useToast();
+  const { user } = useAuth();
 
   const handleDataLoaded = async (loadedData: any[], filename: string) => {
     setIsLoading(true);
@@ -32,7 +34,8 @@ const Dashboard = () => {
         await supabase.from('predictions').insert({
           filename,
           data: loadedData,
-          forecast: loadedData
+          forecast: loadedData,
+          user_id: user?.id
         });
         
         toast({
