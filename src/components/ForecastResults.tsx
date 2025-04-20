@@ -1,4 +1,3 @@
-
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChartLine, Calendar, Download, ArrowUp, ArrowDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -165,11 +164,11 @@ export function ForecastResults({ data, forecast }: ForecastResultsProps) {
                     <div className="space-y-2">
                       <div className="flex justify-between items-center">
                         <span className="text-sm text-muted-foreground">Current price:</span>
-                        <span className="font-medium">${product[product.length-1].price}</span>
+                        <span className="font-medium">₹{product[product.length-1].price}</span>
                       </div>
                       <div className="flex justify-between items-center">
                         <span className="text-sm text-muted-foreground">Competitor price:</span>
-                        <span className="font-medium">${product[product.length-1].competitor_price}</span>
+                        <span className="font-medium">₹{product[product.length-1].competitor_price}</span>
                       </div>
                       <Button 
                         variant="outline" 

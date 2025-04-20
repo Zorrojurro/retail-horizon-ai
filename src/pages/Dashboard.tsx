@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Header } from "@/components/Header";
 import { FileUpload } from "@/components/FileUpload";
@@ -88,11 +89,11 @@ const Dashboard = () => {
                   <>
                     <div className="space-y-4 text-center mb-8">
                       <h1 className="text-4xl font-bold tracking-tight">
-                        AI-Powered Demand Forecasting
+                        AI-Powered Demand Forecasting for Indian Businesses
                       </h1>
                       <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
                         Upload your sales data and get AI-driven insights to optimize inventory 
-                        and increase profitability for your small business.
+                        and increase profitability for your business in the Indian market.
                       </p>
                     </div>
                     <FileUpload onDataLoaded={handleDataLoaded} isLoading={isLoading} />

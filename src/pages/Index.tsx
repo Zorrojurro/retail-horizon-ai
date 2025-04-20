@@ -44,11 +44,11 @@ const Index = () => {
             {!dataLoaded && (
               <div className="space-y-4 text-center mb-8">
                 <h1 className="text-4xl font-bold tracking-tight">
-                  AI-Powered Demand Forecasting
+                  AI-Powered Demand Forecasting for Indian Businesses
                 </h1>
                 <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
                   Upload your sales data and get AI-driven insights to optimize inventory 
-                  and increase profitability for your small business.
+                  and increase profitability for your business in the Indian market.
                 </p>
               </div>
             )}
@@ -77,10 +77,10 @@ const Index = () => {
         <footer className="border-t py-6 md:py-0">
           <div className="container flex flex-col md:flex-row items-center justify-between gap-4 md:h-16">
             <p className="text-sm text-muted-foreground">
-              &copy; {new Date().getFullYear()} RetailHorizon AI. All rights reserved.
+              &copy; {new Date().getFullYear()} RetailHorizon AI India. All rights reserved.
             </p>
             <p className="text-sm text-muted-foreground">
-              Cloud-based demand forecasting for small businesses
+              AI-powered demand forecasting for Indian businesses
             </p>
           </div>
         </footer>
