@@ -1,4 +1,3 @@
-
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChartLine, Calendar, Download, ArrowUp, ArrowDown, Lightbulb, Brain } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -7,6 +6,9 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ProductCard } from "./ProductCard";
+import { RecommendationCard } from "./RecommendationCard";
+import { DetailAnalysis } from "./DetailAnalysis";
 
 interface ForecastResultsProps {
   data: any[];
@@ -20,7 +22,6 @@ interface ForecastResultsProps {
 }
 
 export function ForecastResults({ data, forecast, metadata, isLoading = false }: ForecastResultsProps) {
-  // Group by product
   const productGroups = data.reduce((groups: Record<string, any[]>, item) => {
     const productId = item.product_id;
     if (!groups[productId]) {
@@ -30,16 +31,13 @@ export function ForecastResults({ data, forecast, metadata, isLoading = false }:
     return groups;
   }, {});
 
-  // Get unique product IDs
   const productIds = Object.keys(productGroups);
 
-  // Helper function to determine recommendation
   const getRecommendation = (product: any[]) => {
     const lastSixMonths = product.slice(-6);
     const totalSales = lastSixMonths.reduce((sum, item) => sum + item.units_sold, 0);
     const avgSales = totalSales / lastSixMonths.length;
     
-    // Simple analysis based on average sales and trend
     const firstHalf = lastSixMonths.slice(0, 3);
     const secondHalf = lastSixMonths.slice(3);
     
@@ -232,49 +230,8 @@ export function ForecastResults({ data, forecast, metadata, isLoading = false }:
                   </CardContent>
                 </Card>
 
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-lg">Recommendation</CardTitle>
-                    <CardDescription>AI-powered insight</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-2">
-                      <p className="text-lg font-medium">{rec.recommendation}</p>
-                      <div className="flex items-center gap-2">
-                        <Calendar className="h-4 w-4 text-muted-foreground" />
-                        <p className="text-sm text-muted-foreground">Projected viability: {rec.duration}</p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-lg">Product Details</CardTitle>
-                    <CardDescription>{product[0].product_name}</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-2">
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm text-muted-foreground">Current price:</span>
-                        <span className="font-medium">₹{product[product.length-1].price}</span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm text-muted-foreground">Competitor price:</span>
-                        <span className="font-medium">₹{product[product.length-1].competitor_price}</span>
-                      </div>
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        className="w-full mt-2 gap-1"
-                        onClick={() => exportCSV(productId)}
-                      >
-                        <Download className="h-3 w-3" />
-                        Export Data
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
+                <RecommendationCard rec={rec} />
+                <ProductCard product={product} productId={productId} onExport={exportCSV} />
               </div>
 
               <Card>
@@ -296,56 +253,7 @@ export function ForecastResults({ data, forecast, metadata, isLoading = false }:
                 </CardContent>
               </Card>
 
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">Detailed Analysis</CardTitle>
-                  <CardDescription>
-                    Factors affecting product performance in the Indian market
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <ScrollArea className="h-[200px] w-full rounded-md">
-                    <div className="space-y-4">
-                      <div>
-                        <h4 className="font-medium mb-2">Seasonal Impact</h4>
-                        <p className="text-sm text-muted-foreground">
-                          Sales of this product tend to {rec.trendDirection === "up" ? "increase" : "decrease"} during {product[0].season}. 
-                          {rec.trendDirection === "up" 
-                            ? " Consider increasing stock levels during this season." 
-                            : " Consider reducing orders during this season."}
-                        </p>
-                      </div>
-                      <div>
-                        <h4 className="font-medium mb-2">Price Sensitivity</h4>
-                        <p className="text-sm text-muted-foreground">
-                          {Math.abs(product[0].price - product[product.length-1].competitor_price) > 5
-                            ? "There is a significant price difference compared to competitors, which may impact sales."
-                            : "The product is competitively priced in the market."}
-                          {product[0].price > product[product.length-1].competitor_price
-                            ? " Consider adjusting your pricing strategy to remain competitive."
-                            : ""}
-                        </p>
-                      </div>
-                      <div>
-                        <h4 className="font-medium mb-2">Festival Season Impact</h4>
-                        <p className="text-sm text-muted-foreground">
-                          Indian festival seasons (Diwali, Holi, Navratri) significantly impact sales patterns. 
-                          {rec.trendDirection === "up"
-                            ? " Plan for increased inventory during major festivals to maximize revenue opportunities."
-                            : " Consider targeted promotions during festival seasons to boost sales."}
-                        </p>
-                      </div>
-                      <div>
-                        <h4 className="font-medium mb-2">Regional Variations</h4>
-                        <p className="text-sm text-muted-foreground">
-                          Sales patterns vary across different regions in India. North and West India show stronger 
-                          demand during winter months, while South India maintains more consistent demand year-round.
-                        </p>
-                      </div>
-                    </div>
-                  </ScrollArea>
-                </CardContent>
-              </Card>
+              <DetailAnalysis rec={rec} product={product} />
             </TabsContent>
           );
         })}
