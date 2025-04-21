@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Header } from "@/components/Header";
 import { FileUpload } from "@/components/FileUpload";
@@ -39,20 +38,31 @@ const Dashboard = () => {
         body: { data: loadedData }
       });
       
-      if (error) throw error;
+      if (error) {
+        console.error("Error from forecast function:", error);
+        throw error;
+      }
       
       console.log("Received forecast response:", forecastResponse);
       
-      setForecast(forecastResponse.forecast);
-      setModelMetadata(forecastResponse.metadata);
+      // If we don't have a proper forecast response, use original data as fallback
+      if (!forecastResponse || !forecastResponse.forecast || forecastResponse.forecast.length === 0) {
+        console.log("No forecast data returned, using original data as fallback");
+        setForecast(loadedData);
+      } else {
+        console.log("Setting forecast data:", forecastResponse.forecast);
+        setForecast(forecastResponse.forecast);
+      }
+      
+      setModelMetadata(forecastResponse?.metadata || null);
       setDataLoaded(true);
       
       // Save the prediction to the database
       await supabase.from('predictions').insert({
         filename,
         data: loadedData,
-        forecast: forecastResponse.forecast,
-        metadata: forecastResponse.metadata,
+        forecast: forecastResponse?.forecast || loadedData,
+        metadata: forecastResponse?.metadata || null,
         user_id: user?.id
       });
       
@@ -68,6 +78,7 @@ const Dashboard = () => {
         variant: "destructive"
       });
       // Use original data as fallback
+      console.log("Using original data as fallback due to error");
       setForecast(loadedData);
     } finally {
       setIsForecastLoading(false);
@@ -79,8 +90,9 @@ const Dashboard = () => {
     console.log("Viewing prediction with data:", predictionData);
     console.log("Forecast data:", predictionForecast);
     
-    setData(predictionData);
-    setForecast(predictionForecast);
+    // Ensure we always have valid arrays
+    setData(predictionData || []);
+    setForecast(predictionForecast || predictionData || []);
     setCurrentFile(filename);
     setModelMetadata(metadata);
     setDataLoaded(true);

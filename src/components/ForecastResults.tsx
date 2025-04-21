@@ -1,4 +1,3 @@
-
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChartLine, Calendar, Download, ArrowUp, ArrowDown, Lightbulb, Brain } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -23,6 +22,9 @@ interface ForecastResultsProps {
 }
 
 export function ForecastResults({ data, forecast, metadata, isLoading = false }: ForecastResultsProps) {
+  console.log("ForecastResults data:", data);
+  console.log("ForecastResults forecast:", forecast);
+  
   const productGroups = data.reduce((groups: Record<string, any[]>, item) => {
     const productId = item.product_id;
     if (!groups[productId]) {
@@ -33,6 +35,7 @@ export function ForecastResults({ data, forecast, metadata, isLoading = false }:
   }, {});
 
   const productIds = Object.keys(productGroups);
+  console.log("Product IDs found:", productIds);
 
   const getRecommendation = (product: any[]) => {
     const lastSixMonths = product.slice(-6);
@@ -151,6 +154,12 @@ export function ForecastResults({ data, forecast, metadata, isLoading = false }:
     );
   }
 
+  if (!forecast || forecast.length === 0) {
+    console.log("No forecast data available");
+  } else {
+    console.log("Forecast data:", forecast);
+  }
+
   return (
     <div className="space-y-6 animate-in">
       {metadata && (
@@ -249,7 +258,10 @@ export function ForecastResults({ data, forecast, metadata, isLoading = false }:
                 </CardHeader>
                 <CardContent>
                   <div className="h-[350px]">
-                    <SalesChart data={forecast.filter(item => item.product_id === productId)} productId={productId} />
+                    <SalesChart 
+                      data={forecast.length > 0 ? forecast : data} 
+                      productId={productId} 
+                    />
                   </div>
                 </CardContent>
               </Card>

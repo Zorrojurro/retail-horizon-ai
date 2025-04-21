@@ -22,49 +22,44 @@ export function SalesChart({ data, productId }: SalesChartProps) {
   const [chartData, setChartData] = useState<any[]>([]);
 
   useEffect(() => {
-    if (data && data.length) {
-      console.log("Raw data received:", data);
-      console.log("Looking for product ID:", productId);
-      
-      // Filter data for the specific product
-      const productData = data.filter(item => item.product_id === productId);
-      
-      if (productData.length === 0) {
-        console.log("No data found for product ID:", productId);
-        return;
-      }
-      
-      console.log("Product data:", productData);
-      
-      // Format dates for better display
-      const processed = productData.map(item => {
-        // Make a copy of the item to avoid mutation
-        const newItem = { ...item };
-        
-        // Format the date
-        newItem.date = new Date(item.date).toLocaleDateString("en-US", {
-          month: "short",
-          day: "numeric",
-        });
-        
-        // Handle forecast values correctly
-        if (item.units_sold === null && item.forecast) {
-          // This is a forecast data point
-          newItem.forecast = item.forecast;
-          newItem.units_sold = null;
-        } else if (item.forecast) {
-          // This is a historical data point with a forecast value
-          newItem.forecast = null;
-        }
-        
-        return newItem;
+    if (!data || data.length === 0) {
+      console.log("No data provided to SalesChart component");
+      return;
+    }
+
+    console.log("SalesChart received data:", data);
+    console.log("Product ID to filter:", productId);
+    
+    // Filter for the specific product
+    const productData = data.filter(item => String(item.product_id) === String(productId));
+    
+    if (productData.length === 0) {
+      console.log(`No data found for product ID: ${productId}`);
+      return;
+    }
+    
+    console.log(`Found ${productData.length} data points for product ID ${productId}`);
+    
+    // Process and format the data for the chart
+    const formattedData = productData.map(item => {
+      // Format date
+      const formattedDate = new Date(item.date).toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
       });
       
-      console.log("Processed chart data:", processed);
-      setChartData(processed);
-    } else {
-      console.log("No data received or empty data array");
-    }
+      // Create a new object to avoid mutations
+      return {
+        ...item,
+        date: formattedDate,
+        // Ensure proper handling of units_sold and forecast
+        units_sold: item.units_sold !== null ? Number(item.units_sold) : null,
+        forecast: item.forecast !== undefined ? Number(item.forecast) : null
+      };
+    });
+    
+    console.log("Formatted chart data:", formattedData);
+    setChartData(formattedData);
   }, [data, productId]);
 
   // Get theme colors for the chart
@@ -76,16 +71,14 @@ export function SalesChart({ data, productId }: SalesChartProps) {
     forecast: theme === "dark" ? "#f97316" : "#ea580c",
   };
 
+  // Show a message if no data is available
   if (!chartData || chartData.length === 0) {
-    console.log("No chart data available to render");
     return (
       <div className="flex items-center justify-center h-full w-full p-8 text-center text-muted-foreground">
         No data available for this product
       </div>
     );
   }
-
-  console.log("Rendering chart with data:", chartData);
 
   return (
     <ResponsiveContainer width="100%" height="100%">
