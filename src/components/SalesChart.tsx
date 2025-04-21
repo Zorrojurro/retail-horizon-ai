@@ -23,6 +23,9 @@ export function SalesChart({ data, productId }: SalesChartProps) {
 
   useEffect(() => {
     if (data && data.length) {
+      console.log("Raw data received:", data);
+      console.log("Looking for product ID:", productId);
+      
       // Filter data for the specific product
       const productData = data.filter(item => item.product_id === productId);
       
@@ -34,18 +37,33 @@ export function SalesChart({ data, productId }: SalesChartProps) {
       console.log("Product data:", productData);
       
       // Format dates for better display
-      const processed = productData.map(item => ({
-        ...item,
-        date: new Date(item.date).toLocaleDateString("en-US", {
+      const processed = productData.map(item => {
+        // Make a copy of the item to avoid mutation
+        const newItem = { ...item };
+        
+        // Format the date
+        newItem.date = new Date(item.date).toLocaleDateString("en-US", {
           month: "short",
           day: "numeric",
-        }),
-        // Ensure forecast values are properly structured if they exist
-        forecast: item.forecast || (item.units_sold === null ? item.forecast_value : null)
-      }));
+        });
+        
+        // Handle forecast values correctly
+        if (item.units_sold === null && item.forecast) {
+          // This is a forecast data point
+          newItem.forecast = item.forecast;
+          newItem.units_sold = null;
+        } else if (item.forecast) {
+          // This is a historical data point with a forecast value
+          newItem.forecast = null;
+        }
+        
+        return newItem;
+      });
       
       console.log("Processed chart data:", processed);
       setChartData(processed);
+    } else {
+      console.log("No data received or empty data array");
     }
   }, [data, productId]);
 
@@ -58,10 +76,16 @@ export function SalesChart({ data, productId }: SalesChartProps) {
     forecast: theme === "dark" ? "#f97316" : "#ea580c",
   };
 
-  if (!chartData || !chartData.length) {
-    console.log("No chart data available");
-    return <div className="p-8 text-center text-muted-foreground">No data available for this product</div>;
+  if (!chartData || chartData.length === 0) {
+    console.log("No chart data available to render");
+    return (
+      <div className="flex items-center justify-center h-full w-full p-8 text-center text-muted-foreground">
+        No data available for this product
+      </div>
+    );
   }
+
+  console.log("Rendering chart with data:", chartData);
 
   return (
     <ResponsiveContainer width="100%" height="100%">
@@ -82,7 +106,11 @@ export function SalesChart({ data, productId }: SalesChartProps) {
           height={70}
           tick={{ fill: colors.axis, fontSize: 12 }}
         />
-        <YAxis tick={{ fill: colors.axis, fontSize: 12 }} />
+        <YAxis 
+          tick={{ fill: colors.axis, fontSize: 12 }}
+          allowDecimals={false}
+          domain={[0, 'auto']}
+        />
         <Tooltip
           contentStyle={{
             backgroundColor: colors.tooltip,

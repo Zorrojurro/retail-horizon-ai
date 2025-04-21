@@ -33,11 +33,15 @@ const Dashboard = () => {
       // Call the demand forecasting edge function
       setIsForecastLoading(true);
       
+      console.log("Sending data to forecast function:", loadedData);
+      
       const { data: forecastResponse, error } = await supabase.functions.invoke('demand-forecast', {
         body: { data: loadedData }
       });
       
       if (error) throw error;
+      
+      console.log("Received forecast response:", forecastResponse);
       
       setForecast(forecastResponse.forecast);
       setModelMetadata(forecastResponse.metadata);
@@ -72,6 +76,9 @@ const Dashboard = () => {
   };
 
   const handleViewPrediction = (predictionData: any[], predictionForecast: any[], filename: string, metadata?: any) => {
+    console.log("Viewing prediction with data:", predictionData);
+    console.log("Forecast data:", predictionForecast);
+    
     setData(predictionData);
     setForecast(predictionForecast);
     setCurrentFile(filename);
