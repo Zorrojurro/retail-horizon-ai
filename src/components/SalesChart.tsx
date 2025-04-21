@@ -23,57 +23,19 @@ export function SalesChart({ data, productId }: SalesChartProps) {
 
   useEffect(() => {
     if (data && data.length) {
-      // Group data by week/month for better visualization
-      const processed = data.map(item => ({
+      // Filter data for the specific product
+      const productData = data.filter(item => item.product_id === productId);
+      
+      // Format dates for better display
+      const processed = productData.map(item => ({
         ...item,
         date: new Date(item.date).toLocaleDateString("en-US", {
           month: "short",
           day: "numeric",
         }),
       }));
-
-      // Generate forecast data (in a real app, this would come from an AI model)
-      const lastDate = new Date(data[data.length - 1].date);
-      const lastPrice = data[data.length - 1].price;
-      const avgSales = data.reduce((sum, item) => sum + item.units_sold, 0) / data.length;
       
-      // Generate simple forecast (in a real app, this would use actual ML)
-      const forecast = [];
-      for (let i = 1; i <= 6; i++) {
-        const forecastDate = new Date(lastDate);
-        forecastDate.setDate(forecastDate.getDate() + i * 7);
-        
-        // Simple forecast algorithm (would be replaced by actual ML model)
-        let projectedSales;
-        if (i <= 2) {
-          projectedSales = avgSales * (1 + 0.05 * i); // Slight increase
-        } else if (i <= 4) {
-          projectedSales = avgSales * (1 + 0.08 * i); // Larger increase
-        } else {
-          projectedSales = avgSales * (1 + 0.1 * i); // Even larger increase
-        }
-        
-        forecast.push({
-          date: forecastDate.toLocaleDateString("en-US", {
-            month: "short",
-            day: "numeric",
-          }),
-          units_sold: null,
-          forecast: Math.round(projectedSales),
-          price: lastPrice,
-        });
-      }
-
-      // Combine actual data with forecast
-      const combined = [
-        ...processed.map(item => ({
-          ...item,
-          forecast: null,
-        })),
-        ...forecast,
-      ];
-
-      setChartData(combined);
+      setChartData(processed);
     }
   }, [data, productId]);
 
@@ -86,7 +48,7 @@ export function SalesChart({ data, productId }: SalesChartProps) {
     forecast: theme === "dark" ? "#f97316" : "#ea580c",
   };
 
-  if (!chartData.length) return <div>Loading chart data...</div>;
+  if (!chartData.length) return <div>No data available for this product</div>;
 
   return (
     <ResponsiveContainer width="100%" height="100%">
@@ -131,7 +93,7 @@ export function SalesChart({ data, productId }: SalesChartProps) {
           dataKey="forecast"
           stroke={colors.forecast}
           strokeDasharray="5 5"
-          name="Forecast"
+          name="Forecast (₹)"
           strokeWidth={2}
           dot={{ r: 4 }}
         />
