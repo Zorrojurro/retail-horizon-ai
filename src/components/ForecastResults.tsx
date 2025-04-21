@@ -1,3 +1,4 @@
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChartLine, Calendar, Download, ArrowUp, ArrowDown, Lightbulb, Brain } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -74,7 +75,7 @@ export function ForecastResults({ data, forecast, metadata, isLoading = false }:
       sentiment,
       duration,
       trend: trendPercentage,
-      trendDirection: trend > 0 ? "up" : "down",
+      trendDirection: trend > 0 ? "up" as const : "down" as const,
       avgSales: avgSales.toFixed(1)
     };
   };

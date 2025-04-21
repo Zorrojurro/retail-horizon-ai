@@ -32,6 +32,19 @@ export function RecommendationCard({ rec }: RecommendationCardProps) {
               Projected viability: {rec.duration}
             </p>
           </div>
+          <div className="flex items-center gap-1 mt-2">
+            <Badge variant={
+              rec.sentiment === "positive" ? "default" : 
+              rec.sentiment === "neutral" ? "secondary" : "destructive"
+            }>
+              {rec.trendDirection === "up" ? (
+                <ArrowUp className="h-3 w-3 mr-1" />
+              ) : (
+                <ArrowDown className="h-3 w-3 mr-1" />
+              )}
+              {rec.trend}% trend
+            </Badge>
+          </div>
         </div>
       </CardContent>
     </Card>
