@@ -62,18 +62,26 @@ const Dashboard = () => {
         
         // Save the prediction to the database
         try {
-          await supabase.from('predictions').insert({
-            filename,
-            data: loadedData,
-            forecast: forecastResponse?.forecast || loadedData,
-            metadata: forecastResponse?.metadata || null,
-            user_id: user?.id
-          });
-          
-          toast({
-            title: "Forecast generated",
-            description: "Your AI-powered forecast has been saved and is ready to view."
-          });
+          if (user) {
+            await supabase.from('predictions').insert({
+              filename,
+              data: loadedData,
+              forecast: forecastResponse?.forecast || loadedData,
+              metadata: forecastResponse?.metadata || null,
+              user_id: user?.id
+            });
+            
+            toast({
+              title: "Forecast generated",
+              description: "Your AI-powered forecast has been saved and is ready to view."
+            });
+          } else {
+            // For non-logged in users, just show the forecast without saving
+            toast({
+              title: "Forecast generated",
+              description: "Your AI-powered forecast is ready to view. Log in to save your forecasts."
+            });
+          }
         } catch (dbError) {
           console.error('Error saving forecast to database:', dbError);
           toast({
@@ -85,11 +93,11 @@ const Dashboard = () => {
       }
       
       setDataLoaded(true);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error generating forecast:', error);
       toast({
         title: "Forecasting Error",
-        description: "There was a problem generating your forecast. Please try again with a different CSV format.",
+        description: error.message || "There was a problem generating your forecast. Please try again with a different CSV format.",
         variant: "destructive"
       });
       // Use original data as fallback

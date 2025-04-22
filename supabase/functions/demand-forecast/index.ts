@@ -69,22 +69,64 @@ serve(async (req) => {
     console.log("Received data for forecasting:", data.length, "data points");
     console.log("Sample data point:", JSON.stringify(data[0]));
     
-    // Validate required fields are present
-    if (!data[0].date || !data[0].product_id) {
-      throw new Error("Missing required fields in data. Each item must have at least 'date' and 'product_id'.");
+    // More flexible field validation - check for existence of required columns or alternatives
+    const hasDate = data[0].date !== undefined;
+    const hasProductId = data[0].product_id !== undefined || data[0].id !== undefined || 
+                         data[0].product !== undefined || data[0].item_id !== undefined;
+    const hasSalesData = data[0].units_sold !== undefined || data[0].sales !== undefined || 
+                         data[0].quantity !== undefined || data[0].units !== undefined;
+    
+    if (!hasDate || !hasProductId || !hasSalesData) {
+      const missingFields = [];
+      if (!hasDate) missingFields.push("date");
+      if (!hasProductId) missingFields.push("product identifier (product_id, id, product, or item_id)");
+      if (!hasSalesData) missingFields.push("sales data (units_sold, sales, quantity, or units)");
+      
+      throw new Error(`Missing required fields in data: ${missingFields.join(", ")}`);
     }
     
-    // Extract necessary data with more robust handling for missing fields
-    const salesData = data.map(item => ({
-      date: new Date(item.date),
-      units_sold: Number(item.units_sold || 0),
-      price: Number(item.price || 0),
-      competitor_price: Number(item.competitor_price || 0),
-      promotion: item.promotion === "Yes" || item.promotion === true,
-      product_id: item.product_id,
-      product_name: item.product_name || `Product ${item.product_id}`,
-      season: item.season || "Regular"
-    }));
+    // Extract necessary data with more robust handling for missing fields and field name variations
+    const salesData = data.map(item => {
+      // Handle different field names for the same concepts
+      const productId = String(item.product_id || item.id || item.product || item.item_id || 'unknown');
+      const unitsSold = Number(item.units_sold || item.sales || item.quantity || item.units || 0);
+      const price = Number(item.price || item.unit_price || item.selling_price || 0);
+      const competitorPrice = Number(item.competitor_price || item.comp_price || 0);
+      
+      // Parse date safely
+      let dateObj;
+      try {
+        dateObj = new Date(item.date);
+        // Check if the date is valid
+        if (isNaN(dateObj.getTime())) {
+          console.warn(`Invalid date format: ${item.date}, using current date`);
+          dateObj = new Date();
+        }
+      } catch (e) {
+        console.warn(`Error parsing date: ${item.date}, using current date`);
+        dateObj = new Date();
+      }
+      
+      return {
+        date: dateObj,
+        units_sold: unitsSold,
+        price: price,
+        competitor_price: competitorPrice,
+        promotion: item.promotion === "Yes" || item.promotion === true || item.promotion === 1,
+        product_id: productId,
+        product_name: item.product_name || `Product ${productId}`,
+        season: item.season || getSeason(dateObj)
+      };
+    });
+    
+    // Function to determine season based on date if not provided
+    function getSeason(date: Date): string {
+      const month = date.getMonth();
+      if (month >= 11 || month <= 1) return "Winter";
+      if (month >= 2 && month <= 4) return "Spring";
+      if (month >= 5 && month <= 7) return "Summer";
+      return "Fall";
+    }
     
     // Sort by date
     salesData.sort((a, b) => a.date.getTime() - b.date.getTime());
@@ -104,9 +146,16 @@ serve(async (req) => {
     
     for (const productId in productGroups) {
       const productData = productGroups[productId];
+      
+      // Skip products with too little data
+      if (productData.length < 3) {
+        console.warn(`Skipping forecast for product ${productId}: Insufficient data points (${productData.length})`);
+        continue;
+      }
+      
       const lastDate = productData[productData.length - 1].date;
-      const lastPrice = productData[productData.length - 1].price;
-      const lastCompetitorPrice = productData[productData.length - 1].competitor_price;
+      const lastPrice = productData[productData.length - 1].price || 0;
+      const lastCompetitorPrice = productData[productData.length - 1].competitor_price || 0;
       const unitsSoldHistory = productData.map(d => d.units_sold);
       
       // Basic forecasting parameters
@@ -123,6 +172,8 @@ serve(async (req) => {
       
       // Determine trend direction (positive or negative)
       const trendFactor = mediumTermSMA > 0 ? shortTermSMA / mediumTermSMA : 1;
+      
+      console.log(`Product ${productId} - Short-term SMA: ${shortTermSMA}, Medium-term SMA: ${mediumTermSMA}, Trend factor: ${trendFactor}`);
       
       // Generate forecast for the next 12 weeks
       for (let i = 1; i <= 12; i++) {
@@ -151,21 +202,26 @@ serve(async (req) => {
         const randomFactor = 0.95 + Math.random() * 0.1;
         forecastedSales *= randomFactor;
         
-        // Ensure forecast is a positive number
-        forecastedSales = Math.max(0, forecastedSales);
+        // Ensure forecast is a positive number and rounded to nearest integer
+        forecastedSales = Math.max(0, Math.round(forecastedSales));
         
         allForecasts.push({
           date: forecastDate.toISOString(),
           units_sold: null, // No actual sales for forecast period
-          forecast: Math.round(forecastedSales),
+          forecast: forecastedSales,
           price: lastPrice,
           competitor_price: lastCompetitorPrice,
           promotion: "No",
           product_id: productId,
           product_name: productData[0].product_name,
-          season: productData[0].season
+          season: getSeason(forecastDate)
         });
       }
+    }
+    
+    // If no forecasts could be generated, throw an error
+    if (allForecasts.length === 0) {
+      throw new Error("Could not generate forecasts. Ensure your data has sufficient time points per product.");
     }
     
     // Return combined historical + forecast data
@@ -192,7 +248,7 @@ serve(async (req) => {
     });
     
   } catch (error) {
-    console.error("Error processing forecast:", error);
+    console.error("Error processing forecast:", error.message);
     
     return new Response(JSON.stringify({ 
       error: error.message || "An error occurred during forecasting"

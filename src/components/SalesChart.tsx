@@ -30,7 +30,7 @@ export function SalesChart({ data, productId }: SalesChartProps) {
     console.log("SalesChart received data:", data);
     console.log("Product ID to filter:", productId);
     
-    // More flexible product ID filtering - handle both string and number product IDs
+    // More flexible product ID filtering - convert both to strings for comparison
     const productData = data.filter(item => {
       const itemProductId = String(item.product_id);
       const targetProductId = String(productId);
@@ -46,13 +46,20 @@ export function SalesChart({ data, productId }: SalesChartProps) {
     
     // Process and format the data for the chart with more robust handling
     const formattedData = productData.map(item => {
-      // Ensure date is properly handled - different CSV files might format dates differently
+      // Ensure date is properly handled
       let formattedDate;
       try {
-        formattedDate = new Date(item.date).toLocaleDateString("en-US", {
-          month: "short",
-          day: "numeric",
-        });
+        // Handle different date formats that might come from user CSV files
+        const dateObj = new Date(item.date);
+        if (!isNaN(dateObj.getTime())) {
+          formattedDate = dateObj.toLocaleDateString("en-US", {
+            month: "short",
+            day: "numeric",
+          });
+        } else {
+          // If date parsing fails, use the original string
+          formattedDate = item.date;
+        }
       } catch (e) {
         console.log("Error formatting date:", e);
         formattedDate = item.date; // Fallback to the original string

@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -47,8 +46,16 @@ export function FileUpload({ onDataLoaded, isLoading }: FileUploadProps) {
     if (e.target.files && e.target.files[0]) {
       const selectedFile = e.target.files[0];
       
-      // Check if the file is a CSV
-      if (selectedFile.type !== "text/csv" && !selectedFile.name.endsWith('.csv')) {
+      // Accept CSV files with various MIME types that might be used by different systems
+      const validTypes = [
+        "text/csv", 
+        "application/csv", 
+        "application/vnd.ms-excel",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      ];
+      
+      // Check if the file extension is .csv or if it's a recognized CSV type
+      if (!validTypes.includes(selectedFile.type) && !selectedFile.name.endsWith('.csv')) {
         toast.error("Please upload a CSV file");
         return;
       }
@@ -60,18 +67,37 @@ export function FileUpload({ onDataLoaded, isLoading }: FileUploadProps) {
       reader.onload = (event) => {
         try {
           const text = event.target?.result as string;
+          console.log("CSV file content sample:", text.substring(0, 200));
+          
           const data = parseCSV(text);
           
           // Validate required fields
           if (data.length > 0) {
             const firstRow = data[0];
-            if (!firstRow.date || !firstRow.product_id) {
-              toast.error("CSV must contain at least 'date' and 'product_id' columns");
+            
+            // Check for minimum required fields
+            if (!firstRow.date) {
+              toast.error("CSV must contain a 'date' column");
+              return;
+            }
+            
+            if (!firstRow.product_id && !firstRow.id && !firstRow.product && !firstRow.item_id) {
+              toast.error("CSV must contain a product identifier column (product_id, id, product, or item_id)");
+              return;
+            }
+            
+            if (!firstRow.units_sold && !firstRow.sales && !firstRow.quantity && !firstRow.units) {
+              toast.error("CSV must contain a sales data column (units_sold, sales, quantity, or units)");
               return;
             }
             
             console.log("Parsed CSV data:", data);
-            onDataLoaded(data, selectedFile.name);
+            
+            // Normalize data to ensure it has the required fields
+            const normalizedData = normalizeData(data);
+            console.log("Normalized data:", normalizedData);
+            
+            onDataLoaded(normalizedData, selectedFile.name);
             toast.success("Data loaded successfully");
           } else {
             toast.error("No data found in CSV file");
@@ -85,14 +111,63 @@ export function FileUpload({ onDataLoaded, isLoading }: FileUploadProps) {
     }
   };
 
+  // Normalize data to ensure it has the required fields
+  const normalizeData = (data: any[]): any[] => {
+    return data.map(row => {
+      const normalized: any = { ...row };
+      
+      // Ensure product_id exists (use alternatives if needed)
+      if (!normalized.product_id) {
+        normalized.product_id = normalized.id || normalized.product || normalized.item_id || 'unknown';
+      }
+      
+      // Ensure units_sold exists (use alternatives if needed)
+      if (!normalized.units_sold) {
+        normalized.units_sold = normalized.sales || normalized.quantity || normalized.units || 0;
+      }
+      
+      // Ensure product_name exists
+      if (!normalized.product_name) {
+        normalized.product_name = `Product ${normalized.product_id}`;
+      }
+      
+      // Ensure price exists
+      if (!normalized.price) {
+        normalized.price = normalized.unit_price || normalized.selling_price || 0;
+      }
+      
+      // Ensure date is in a consistent format
+      if (normalized.date) {
+        // Try to convert to ISO format if it's not already
+        try {
+          const dateObj = new Date(normalized.date);
+          if (!isNaN(dateObj.getTime())) {
+            normalized.date = dateObj.toISOString().split('T')[0]; // YYYY-MM-DD format
+          }
+        } catch (e) {
+          // Keep original if it can't be parsed
+          console.warn("Could not parse date:", normalized.date);
+        }
+      }
+      
+      return normalized;
+    });
+  };
+
   const parseCSV = (text: string): any[] => {
-    const lines = text.split('\n');
+    // Split by newlines, handling different newline formats
+    const lines = text.split(/\r\n|\n|\r/).filter(line => line.trim());
+    
     if (lines.length < 2) {
       throw new Error("CSV file must contain at least a header row and one data row");
     }
     
-    const headers = lines[0].split(',').map(header => header.trim());
+    // Parse headers, handling various delimiters
+    let delimiter = ',';
+    if (lines[0].includes(';')) delimiter = ';';
+    else if (lines[0].includes('\t')) delimiter = '\t';
     
+    const headers = lines[0].split(delimiter).map(header => header.trim());
     console.log("CSV headers:", headers);
     
     const result = [];
@@ -100,31 +175,30 @@ export function FileUpload({ onDataLoaded, isLoading }: FileUploadProps) {
     for (let i = 1; i < lines.length; i++) {
       if (!lines[i].trim()) continue;
       
-      const data = lines[i].split(',');
-      if (data.length !== headers.length) {
-        console.warn(`Line ${i} has ${data.length} fields, expected ${headers.length}. Line: ${lines[i]}`);
-        continue; // Skip malformed lines
+      const data = lines[i].split(delimiter);
+      
+      // Skip lines with incorrect field count, but be somewhat flexible
+      if (data.length < headers.length * 0.8) {
+        console.warn(`Line ${i} has too few fields (${data.length}), expected approximately ${headers.length}. Line: ${lines[i]}`);
+        continue;
       }
       
       const obj: any = {};
       
-      for (let j = 0; j < headers.length; j++) {
-        // Convert numeric values
-        const value = data[j]?.trim();
-        if (!isNaN(Number(value)) && value !== '') {
-          obj[headers[j]] = Number(value);
+      for (let j = 0; j < Math.min(headers.length, data.length); j++) {
+        const header = headers[j];
+        if (!header) continue; // Skip empty headers
+        
+        // Convert numeric values and handle empty cells
+        const value = data[j]?.trim() || '';
+        
+        if (value === '') {
+          obj[header] = null;
+        } else if (!isNaN(Number(value)) && value !== '') {
+          obj[header] = Number(value);
         } else {
-          obj[headers[j]] = value;
+          obj[header] = value;
         }
-      }
-      
-      // Ensure required fields are present
-      if (!obj.product_id) {
-        obj.product_id = `unknown_${i}`;
-      }
-      
-      if (!obj.product_name) {
-        obj.product_name = `Product ${obj.product_id}`;
       }
       
       result.push(obj);
@@ -156,7 +230,7 @@ export function FileUpload({ onDataLoaded, isLoading }: FileUploadProps) {
         <CardTitle className="text-xl">Upload Sales Data</CardTitle>
         <CardDescription>
           Upload a CSV file with your historical sales data to generate forecasts.
-          Make sure your CSV includes at least these columns: date, product_id, product_name, units_sold
+          The CSV should include at least date, product ID, and sales quantity columns.
         </CardDescription>
       </CardHeader>
       <CardContent>
