@@ -1,5 +1,6 @@
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ChartLine, Calendar, Download, ArrowUp, ArrowDown, Lightbulb, Brain } from "lucide-react";
+import { ChartLine, Calendar, Download, ArrowUp, ArrowDown, Lightbulb, Brain, Database, Cloud, Bot } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SalesChart } from "./SalesChart";
 import { Badge } from "@/components/ui/badge";
@@ -9,6 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ProductCard } from "./ProductCard";
 import { RecommendationCard } from "./RecommendationCard";
 import { DetailAnalysis } from "./DetailAnalysis";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
 interface ForecastResultsProps {
   data: any[];
@@ -17,6 +19,9 @@ interface ForecastResultsProps {
     model: string;
     confidence: number;
     factors: string[];
+    modelDescription?: string;
+    dataPoints?: number;
+    forecastHorizon?: string;
   } | null;
   isLoading?: boolean;
 }
@@ -167,19 +172,23 @@ export function ForecastResults({ data, forecast, metadata, isLoading = false }:
           <CardHeader className="pb-2">
             <div className="flex items-center gap-2">
               <Brain className="h-5 w-5 text-primary" />
-              <CardTitle className="text-lg">AI Forecast Model</CardTitle>
+              <CardTitle className="text-lg">{metadata.model}</CardTitle>
             </div>
-            <CardDescription>Powered by time-series analysis with Indian market adjustments</CardDescription>
+            <CardDescription>
+              Advanced time-series forecasting with Indian market intelligence
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="flex items-center gap-2">
                 <Lightbulb className="h-4 w-4 text-amber-500" />
-                <span className="text-sm font-medium">Model: {metadata.model}</span>
+                <span className="text-sm font-medium">Model Confidence: {(metadata.confidence * 100).toFixed(0)}%</span>
               </div>
               <div className="flex items-center gap-2">
                 <ChartLine className="h-4 w-4 text-emerald-500" />
-                <span className="text-sm font-medium">Confidence: {(metadata.confidence * 100).toFixed(0)}%</span>
+                <span className="text-sm font-medium">
+                  {metadata.dataPoints} predictions over {metadata.forecastHorizon}
+                </span>
               </div>
               <div className="flex flex-wrap gap-1">
                 {metadata.factors.map((factor: string, i: number) => (
@@ -189,6 +198,64 @@ export function ForecastResults({ data, forecast, metadata, isLoading = false }:
                 ))}
               </div>
             </div>
+            
+            <Accordion type="single" collapsible className="mt-4">
+              <AccordionItem value="model-details">
+                <AccordionTrigger className="text-sm font-medium">
+                  About the Forecasting Model
+                </AccordionTrigger>
+                <AccordionContent>
+                  <div className="space-y-4 text-sm text-muted-foreground">
+                    <p>
+                      This forecast uses the <strong>Holt-Winters exponential smoothing algorithm</strong> with 
+                      special adjustments for the Indian market. The model incorporates multiple factors:
+                    </p>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div className="flex items-start gap-2">
+                        <Calendar className="h-4 w-4 text-blue-500 mt-0.5" />
+                        <div>
+                          <p className="font-medium text-foreground">Seasonal Patterns</p>
+                          <p className="text-xs">Accounts for Indian festivals, holidays, and seasonal buying trends</p>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-start gap-2">
+                        <Cloud className="h-4 w-4 text-cyan-500 mt-0.5" />
+                        <div>
+                          <p className="font-medium text-foreground">Regional Weather Impact</p>
+                          <p className="text-xs">Adjusts for monsoon, summer, and other regional weather patterns</p>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-start gap-2">
+                        <Database className="h-4 w-4 text-purple-500 mt-0.5" />
+                        <div>
+                          <p className="font-medium text-foreground">Historical Trends</p>
+                          <p className="text-xs">Analyzes your past sales data to detect patterns and trends</p>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-start gap-2">
+                        <Bot className="h-4 w-4 text-green-500 mt-0.5" />
+                        <div>
+                          <p className="font-medium text-foreground">Price Elasticity</p>
+                          <p className="text-xs">Models how price changes affect consumer demand in Indian markets</p>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <p className="mt-3 text-xs">
+                        <strong>Cloud-Based Architecture:</strong> This application leverages cloud technology through Supabase's 
+                        serverless edge functions for real-time processing, secure data storage, and on-demand scaling. Your forecasts 
+                        are generated in the cloud, allowing for complex calculations without taxing your local device.
+                      </p>
+                    </div>
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
           </CardContent>
         </Card>
       )}

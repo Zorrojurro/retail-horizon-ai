@@ -79,8 +79,23 @@ export function SalesChart({ data, productId }: SalesChartProps) {
       };
     });
     
-    console.log("Formatted chart data:", formattedData);
-    setChartData(formattedData);
+    // Sort data by date for proper charting
+    const sortedData = formattedData.sort((a, b) => {
+      // Try to parse dates for comparison
+      const dateA = new Date(a.date);
+      const dateB = new Date(b.date);
+      
+      // If valid dates, compare them
+      if (!isNaN(dateA.getTime()) && !isNaN(dateB.getTime())) {
+        return dateA.getTime() - dateB.getTime();
+      }
+      
+      // Fallback to string comparison
+      return a.date.localeCompare(b.date);
+    });
+    
+    console.log("Formatted and sorted chart data:", sortedData);
+    setChartData(sortedData);
   }, [data, productId]);
 
   // Get theme colors for the chart
