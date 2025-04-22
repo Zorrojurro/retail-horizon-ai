@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -5,34 +6,32 @@ import { Cloud, Download, FileSpreadsheet } from "lucide-react";
 import { toast } from "sonner";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 
-// Sample CSV data
-const sampleData = `date,product_id,product_name,units_sold,price,season,holiday,promotion,weather,competitor_price
-2023-01-01,001,Coffee Maker,12,99.99,Winter,New Year,Yes,Cold,109.99
-2023-01-08,001,Coffee Maker,8,99.99,Winter,None,No,Cold,109.99
-2023-01-15,001,Coffee Maker,10,99.99,Winter,None,No,Cold,104.99
-2023-01-22,001,Coffee Maker,15,89.99,Winter,None,Yes,Cold,104.99
-2023-01-29,001,Coffee Maker,20,89.99,Winter,None,Yes,Cold,99.99
-2023-02-05,001,Coffee Maker,18,89.99,Winter,None,No,Cold,99.99
-2023-02-12,001,Coffee Maker,25,89.99,Winter,Valentine's Day,Yes,Cold,99.99
-2023-02-19,001,Coffee Maker,15,89.99,Winter,None,No,Cold,104.99
-2023-02-26,001,Coffee Maker,12,89.99,Winter,None,No,Mild,104.99
-2023-03-05,001,Coffee Maker,10,99.99,Spring,None,No,Mild,109.99
-2023-03-12,001,Coffee Maker,8,99.99,Spring,None,No,Mild,109.99
-2023-03-19,001,Coffee Maker,14,89.99,Spring,None,Yes,Mild,99.99
-2023-03-26,001,Coffee Maker,20,89.99,Spring,None,Yes,Warm,99.99
-2023-04-02,001,Coffee Maker,22,89.99,Spring,Easter,Yes,Warm,99.99
-2023-04-09,001,Coffee Maker,25,89.99,Spring,None,Yes,Warm,99.99
-2023-04-16,001,Coffee Maker,18,89.99,Spring,None,No,Warm,104.99
-2023-04-23,001,Coffee Maker,15,89.99,Spring,None,No,Warm,104.99
-2023-04-30,001,Coffee Maker,12,99.99,Spring,None,No,Warm,109.99
-2023-05-07,001,Coffee Maker,10,99.99,Spring,None,No,Hot,109.99
-2023-05-14,001,Coffee Maker,15,89.99,Spring,None,Yes,Hot,99.99
-2023-05-21,001,Coffee Maker,22,89.99,Spring,None,Yes,Hot,99.99
-2023-05-28,001,Coffee Maker,28,89.99,Spring,Memorial Day,Yes,Hot,99.99
-2023-06-04,001,Coffee Maker,20,89.99,Summer,None,No,Hot,104.99
-2023-06-11,001,Coffee Maker,15,89.99,Summer,None,No,Hot,104.99
-2023-06-18,001,Coffee Maker,12,99.99,Summer,None,No,Hot,109.99
-2023-06-25,001,Coffee Maker,10,99.99,Summer,None,No,Hot,109.99`;
+// Sample CSV data with more consistent values for demonstration
+const sampleData = `date,product_id,product_name,units_sold,price,category,region,promotion,competitor_price
+2023-01-01,1,Coffee Maker,12,99.99,home,north,Yes,109.99
+2023-01-15,1,Coffee Maker,10,99.99,home,north,No,104.99
+2023-02-01,1,Coffee Maker,15,89.99,home,north,Yes,104.99
+2023-02-15,1,Coffee Maker,18,89.99,home,north,No,99.99
+2023-03-01,1,Coffee Maker,22,89.99,home,north,Yes,99.99
+2023-03-15,1,Coffee Maker,20,89.99,home,north,No,104.99
+2023-04-01,1,Coffee Maker,18,89.99,home,north,No,99.99
+2023-04-15,1,Coffee Maker,10,99.99,home,north,No,109.99
+2023-05-01,1,Coffee Maker,12,99.99,home,north,No,109.99
+2023-05-15,1,Coffee Maker,15,89.99,home,north,Yes,99.99
+2023-06-01,1,Coffee Maker,20,89.99,home,north,Yes,99.99
+2023-06-15,1,Coffee Maker,15,89.99,home,north,No,104.99
+2023-07-01,1,Coffee Maker,12,99.99,home,north,No,109.99
+2023-07-15,1,Coffee Maker,8,99.99,home,north,No,109.99
+2023-08-01,1,Coffee Maker,10,99.99,home,north,No,104.99
+2023-08-15,1,Coffee Maker,15,89.99,home,north,Yes,99.99
+2023-09-01,1,Coffee Maker,25,89.99,home,north,Yes,99.99
+2023-09-15,1,Coffee Maker,22,89.99,home,north,Yes,99.99
+2023-10-01,1,Coffee Maker,28,89.99,home,north,Yes,99.99
+2023-10-15,1,Coffee Maker,25,89.99,home,north,Yes,99.99
+2023-11-01,1,Coffee Maker,20,89.99,home,north,Yes,99.99
+2023-11-15,1,Coffee Maker,15,89.99,home,north,No,104.99
+2023-12-01,1,Coffee Maker,25,89.99,home,north,Yes,99.99
+2023-12-15,1,Coffee Maker,28,89.99,home,north,Yes,99.99`;
 
 interface FileUploadProps {
   onDataLoaded: (data: any[], filename: string) => void;
@@ -51,11 +50,15 @@ export function FileUpload({ onDataLoaded, isLoading }: FileUploadProps) {
         "text/csv", 
         "application/csv", 
         "application/vnd.ms-excel",
-        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "text/plain", // Allow .txt files that might contain CSV data
+        "application/octet-stream" // Some systems use this generic type
       ];
       
       // Check if the file extension is .csv or if it's a recognized CSV type
-      if (!validTypes.includes(selectedFile.type) && !selectedFile.name.endsWith('.csv')) {
+      if (!validTypes.includes(selectedFile.type) && 
+          !selectedFile.name.endsWith('.csv') && 
+          !selectedFile.name.endsWith('.txt')) {
         toast.error("Please upload a CSV file");
         return;
       }
@@ -66,28 +69,45 @@ export function FileUpload({ onDataLoaded, isLoading }: FileUploadProps) {
       const reader = new FileReader();
       reader.onload = (event) => {
         try {
-          const text = event.target?.result as string;
+          if (!event.target?.result) {
+            toast.error("Failed to read file content");
+            return;
+          }
+          
+          const text = event.target.result as string;
           console.log("CSV file content sample:", text.substring(0, 200));
           
+          if (text.trim().length === 0) {
+            toast.error("The file is empty");
+            return;
+          }
+          
           const data = parseCSV(text);
+          
+          if (data.length === 0) {
+            toast.error("No data found in CSV file");
+            return;
+          }
           
           // Validate required fields
           if (data.length > 0) {
             const firstRow = data[0];
+            const missingFields = [];
             
-            // Check for minimum required fields
-            if (!firstRow.date) {
-              toast.error("CSV must contain a 'date' column");
-              return;
+            if (!hasField(firstRow, ['date'])) {
+              missingFields.push("date");
             }
             
-            if (!firstRow.product_id && !firstRow.id && !firstRow.product && !firstRow.item_id) {
-              toast.error("CSV must contain a product identifier column (product_id, id, product, or item_id)");
-              return;
+            if (!hasField(firstRow, ['product_id', 'id', 'product', 'item_id'])) {
+              missingFields.push("product ID");
             }
             
-            if (!firstRow.units_sold && !firstRow.sales && !firstRow.quantity && !firstRow.units) {
-              toast.error("CSV must contain a sales data column (units_sold, sales, quantity, or units)");
+            if (!hasField(firstRow, ['units_sold', 'sales', 'quantity', 'units'])) {
+              missingFields.push("sales quantity");
+            }
+            
+            if (missingFields.length > 0) {
+              toast.error(`Missing required fields: ${missingFields.join(", ")}`);
               return;
             }
             
@@ -95,20 +115,30 @@ export function FileUpload({ onDataLoaded, isLoading }: FileUploadProps) {
             
             // Normalize data to ensure it has the required fields
             const normalizedData = normalizeData(data);
-            console.log("Normalized data:", normalizedData);
+            console.log("Normalized data sample:", normalizedData.slice(0, 2));
             
             onDataLoaded(normalizedData, selectedFile.name);
-            toast.success("Data loaded successfully");
+            toast.success(`${data.length} records loaded successfully`);
           } else {
             toast.error("No data found in CSV file");
           }
-        } catch (error) {
+        } catch (error: any) {
           console.error("Error parsing CSV:", error);
-          toast.error("Failed to parse CSV file. Make sure it's properly formatted.");
+          toast.error(`Failed to parse CSV file: ${error.message || "Unknown error"}`);
         }
       };
+      
+      reader.onerror = () => {
+        toast.error("Failed to read the file");
+      };
+      
       reader.readAsText(selectedFile);
     }
+  };
+
+  // Helper function to check if an object has at least one of the fields
+  const hasField = (obj: any, fields: string[]): boolean => {
+    return fields.some(field => obj[field] !== undefined);
   };
 
   // Normalize data to ensure it has the required fields
@@ -124,6 +154,10 @@ export function FileUpload({ onDataLoaded, isLoading }: FileUploadProps) {
       // Ensure units_sold exists (use alternatives if needed)
       if (!normalized.units_sold) {
         normalized.units_sold = normalized.sales || normalized.quantity || normalized.units || 0;
+        // Convert to number if it's a string
+        if (typeof normalized.units_sold === 'string') {
+          normalized.units_sold = parseFloat(normalized.units_sold) || 0;
+        }
       }
       
       // Ensure product_name exists
@@ -134,6 +168,10 @@ export function FileUpload({ onDataLoaded, isLoading }: FileUploadProps) {
       // Ensure price exists
       if (!normalized.price) {
         normalized.price = normalized.unit_price || normalized.selling_price || 0;
+        // Convert to number if it's a string
+        if (typeof normalized.price === 'string') {
+          normalized.price = parseFloat(normalized.price) || 0;
+        }
       }
       
       // Ensure date is in a consistent format
@@ -148,6 +186,19 @@ export function FileUpload({ onDataLoaded, isLoading }: FileUploadProps) {
           // Keep original if it can't be parsed
           console.warn("Could not parse date:", normalized.date);
         }
+      } else {
+        // Add a placeholder date if none exists
+        normalized.date = new Date().toISOString().split('T')[0];
+      }
+      
+      // Ensure category exists
+      if (!normalized.category) {
+        normalized.category = "default";
+      }
+      
+      // Ensure region exists
+      if (!normalized.region) {
+        normalized.region = "default";
       }
       
       return normalized;
@@ -162,50 +213,87 @@ export function FileUpload({ onDataLoaded, isLoading }: FileUploadProps) {
       throw new Error("CSV file must contain at least a header row and one data row");
     }
     
-    // Parse headers, handling various delimiters
+    // Auto-detect delimiter by checking first line
     let delimiter = ',';
     if (lines[0].includes(';')) delimiter = ';';
     else if (lines[0].includes('\t')) delimiter = '\t';
+    else if (lines[0].includes('|')) delimiter = '|';
     
-    const headers = lines[0].split(delimiter).map(header => header.trim());
+    // Handle headers with potential quotes and whitespace
+    const headers = lines[0].split(delimiter).map(header => {
+      let cleanHeader = header.trim();
+      // Remove quotes if present
+      if ((cleanHeader.startsWith('"') && cleanHeader.endsWith('"')) || 
+          (cleanHeader.startsWith("'") && cleanHeader.endsWith("'"))) {
+        cleanHeader = cleanHeader.substring(1, cleanHeader.length - 1);
+      }
+      return cleanHeader.trim().toLowerCase();
+    });
+    
     console.log("CSV headers:", headers);
     
     const result = [];
     
+    // Process data rows
     for (let i = 1; i < lines.length; i++) {
       if (!lines[i].trim()) continue;
       
-      const data = lines[i].split(delimiter);
+      // Handle quoted values properly
+      const values = [];
+      let currentValue = "";
+      let inQuotes = false;
       
-      // Skip lines with incorrect field count, but be somewhat flexible
-      if (data.length < headers.length * 0.8) {
-        console.warn(`Line ${i} has too few fields (${data.length}), expected approximately ${headers.length}. Line: ${lines[i]}`);
-        continue;
-      }
-      
-      const obj: any = {};
-      
-      for (let j = 0; j < Math.min(headers.length, data.length); j++) {
-        const header = headers[j];
-        if (!header) continue; // Skip empty headers
+      for (let j = 0; j < lines[i].length; j++) {
+        const char = lines[i][j];
         
-        // Convert numeric values and handle empty cells
-        const value = data[j]?.trim() || '';
-        
-        if (value === '') {
-          obj[header] = null;
-        } else if (!isNaN(Number(value)) && value !== '') {
-          obj[header] = Number(value);
+        if (char === '"' && (j === 0 || lines[i][j-1] !== '\\')) {
+          inQuotes = !inQuotes;
+        } else if (char === delimiter && !inQuotes) {
+          values.push(currentValue);
+          currentValue = "";
         } else {
-          obj[header] = value;
+          currentValue += char;
         }
       }
       
-      result.push(obj);
-    }
-    
-    if (result.length === 0) {
-      throw new Error("No valid data rows found in CSV");
+      // Add the last value
+      values.push(currentValue);
+      
+      // Skip if we didn't get any values
+      if (values.length === 0) continue;
+      
+      // Create an object from headers and values
+      const obj: Record<string, any> = {};
+      
+      for (let j = 0; j < Math.min(headers.length, values.length); j++) {
+        if (!headers[j]) continue; // Skip empty headers
+        
+        let value = values[j].trim();
+        
+        // Remove quotes if present
+        if ((value.startsWith('"') && value.endsWith('"')) || 
+            (value.startsWith("'") && value.endsWith("'"))) {
+          value = value.substring(1, value.length - 1);
+        }
+        
+        // Convert to appropriate type
+        if (value === "" || value.toLowerCase() === "null" || value.toLowerCase() === "n/a") {
+          obj[headers[j]] = null;
+        } else if (!isNaN(Number(value)) && value !== "") {
+          obj[headers[j]] = parseFloat(value);
+        } else if (value.toLowerCase() === "true") {
+          obj[headers[j]] = true;
+        } else if (value.toLowerCase() === "false") {
+          obj[headers[j]] = false;
+        } else {
+          obj[headers[j]] = value;
+        }
+      }
+      
+      // Only add if we have at least some data
+      if (Object.keys(obj).length > 0) {
+        result.push(obj);
+      }
     }
     
     return result;
@@ -230,7 +318,7 @@ export function FileUpload({ onDataLoaded, isLoading }: FileUploadProps) {
         <CardTitle className="text-xl">Upload Sales Data</CardTitle>
         <CardDescription>
           Upload a CSV file with your historical sales data to generate forecasts.
-          The CSV should include at least date, product ID, and sales quantity columns.
+          The CSV should include date, product ID, and sales quantity columns.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -255,7 +343,7 @@ export function FileUpload({ onDataLoaded, isLoading }: FileUploadProps) {
             <Input
               id="dropzone-file"
               type="file"
-              accept=".csv"
+              accept=".csv,.txt"
               className="hidden"
               onChange={handleFileChange}
               disabled={isLoading}

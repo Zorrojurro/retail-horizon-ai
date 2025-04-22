@@ -9,6 +9,7 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
+  TooltipProps,
 } from "recharts";
 import { useTheme } from "@/hooks/use-theme";
 
@@ -30,7 +31,7 @@ export function SalesChart({ data, productId }: SalesChartProps) {
     console.log("SalesChart received data:", data);
     console.log("Product ID to filter:", productId);
     
-    // More flexible product ID filtering - convert both to strings for comparison
+    // More robust product ID filtering - convert both to strings for comparison
     const productData = data.filter(item => {
       const itemProductId = String(item.product_id);
       const targetProductId = String(productId);
@@ -44,8 +45,15 @@ export function SalesChart({ data, productId }: SalesChartProps) {
     
     console.log(`Found ${productData.length} data points for product ID ${productId}`);
     
+    // Sort data by date first to ensure chronological order
+    const sortedData = [...productData].sort((a, b) => {
+      const dateA = new Date(a.date);
+      const dateB = new Date(b.date);
+      return dateA.getTime() - dateB.getTime();
+    });
+
     // Process and format the data for the chart with more robust handling
-    const formattedData = productData.map(item => {
+    const formattedData = sortedData.map(item => {
       // Ensure date is properly handled
       let formattedDate;
       try {
@@ -73,29 +81,14 @@ export function SalesChart({ data, productId }: SalesChartProps) {
         units_sold: item.units_sold !== null && item.units_sold !== undefined 
           ? Number(item.units_sold) 
           : null,
-        forecast: item.forecast !== undefined 
+        forecast: item.forecast !== undefined && item.forecast !== null
           ? Number(item.forecast) 
           : null
       };
     });
     
-    // Sort data by date for proper charting
-    const sortedData = formattedData.sort((a, b) => {
-      // Try to parse dates for comparison
-      const dateA = new Date(a.date);
-      const dateB = new Date(b.date);
-      
-      // If valid dates, compare them
-      if (!isNaN(dateA.getTime()) && !isNaN(dateB.getTime())) {
-        return dateA.getTime() - dateB.getTime();
-      }
-      
-      // Fallback to string comparison
-      return a.date.localeCompare(b.date);
-    });
-    
-    console.log("Formatted and sorted chart data:", sortedData);
-    setChartData(sortedData);
+    console.log("Formatted and sorted chart data:", formattedData);
+    setChartData(formattedData);
   }, [data, productId]);
 
   // Get theme colors for the chart
@@ -105,6 +98,30 @@ export function SalesChart({ data, productId }: SalesChartProps) {
     tooltip: theme === "dark" ? "#1f2937" : "#f3f4f6",
     actual: theme === "dark" ? "#3b82f6" : "#2563eb",
     forecast: theme === "dark" ? "#f97316" : "#ea580c",
+  };
+
+  // Custom tooltip formatter to better handle nulls and provide clearer labels
+  const CustomTooltip = ({ active, payload, label }: TooltipProps<number, string>) => {
+    if (active && payload && payload.length) {
+      return (
+        <div className="bg-background border border-border rounded-md shadow-md p-2 text-xs">
+          <p className="font-medium text-foreground">{label}</p>
+          <div className="space-y-1 pt-1">
+            {payload.map((entry, index) => {
+              if (entry.value !== null && entry.value !== undefined) {
+                return (
+                  <p key={`item-${index}`} style={{ color: entry.color }}>
+                    {entry.name}: {entry.value}
+                  </p>
+                );
+              }
+              return null;
+            })}
+          </div>
+        </div>
+      );
+    }
+    return null;
   };
 
   // Show a message if no data is available
@@ -140,14 +157,7 @@ export function SalesChart({ data, productId }: SalesChartProps) {
           allowDecimals={false}
           domain={[0, 'auto']}
         />
-        <Tooltip
-          contentStyle={{
-            backgroundColor: colors.tooltip,
-            borderRadius: "0.5rem",
-            border: "none",
-            boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
-          }}
-        />
+        <Tooltip content={<CustomTooltip />} />
         <Legend />
         <Line
           type="monotone"
