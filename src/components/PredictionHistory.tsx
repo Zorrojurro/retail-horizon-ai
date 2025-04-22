@@ -4,10 +4,11 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { CalendarIcon, Eye, FileBox } from "lucide-react";
+import { Download, FileBox, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { format } from "date-fns";
+import { useToast } from "@/components/ui/use-toast";
 
 interface PredictionHistoryProps {
   onViewPrediction: (data: any[], forecast: any[], filename: string, metadata?: any) => void;
@@ -17,32 +18,104 @@ export function PredictionHistory({ onViewPrediction }: PredictionHistoryProps) 
   const [predictions, setPredictions] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { user } = useAuth();
+  const { toast } = useToast();
+
+  const fetchPredictions = async () => {
+    if (!user) {
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('predictions')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setPredictions(data || []);
+    } catch (error) {
+      console.error('Error fetching predictions:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to load prediction history",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchPredictions = async () => {
-      if (!user) {
-        setIsLoading(false);
-        return;
-      }
-
-      try {
-        const { data, error } = await supabase
-          .from('predictions')
-          .select('*')
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: false });
-
-        if (error) throw error;
-        setPredictions(data || []);
-      } catch (error) {
-        console.error('Error fetching predictions:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
     fetchPredictions();
   }, [user]);
+
+  const handleDelete = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('predictions')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "Prediction deleted successfully",
+      });
+
+      // Refresh the predictions list
+      fetchPredictions();
+    } catch (error) {
+      console.error('Error deleting prediction:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to delete prediction",
+      });
+    }
+  };
+
+  const handleExport = (prediction: any) => {
+    // Combine actual and forecast data
+    const exportData = prediction.data.map((item: any, index: number) => {
+      const forecastItem = prediction.forecast[index] || {};
+      return {
+        date: item.date,
+        product_id: item.product_id,
+        product_name: item.product_name,
+        price: item.price,
+        competitor_price: item.competitor_price,
+        units_sold: item.units_sold,
+        forecast_units: forecastItem.forecast || '',
+      };
+    });
+
+    // Convert to CSV
+    const headers = ['Date', 'Product ID', 'Product Name', 'Price', 'Competitor Price', 'Actual Sales', 'Forecast Sales'];
+    const csvContent = [
+      headers.join(','),
+      ...exportData.map((row: any) => [
+        row.date,
+        row.product_id,
+        `"${row.product_name}"`,
+        row.price,
+        row.competitor_price,
+        row.units_sold,
+        row.forecast_units
+      ].join(','))
+    ].join('\n');
+
+    // Create and trigger download
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `${prediction.filename}_with_forecast.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   if (isLoading) {
     return (
@@ -93,7 +166,6 @@ export function PredictionHistory({ onViewPrediction }: PredictionHistoryProps) 
             <CardHeader className="pb-2">
               <CardTitle className="text-lg">{prediction.filename}</CardTitle>
               <CardDescription className="flex items-center gap-1">
-                <CalendarIcon className="h-3 w-3" />
                 {prediction.created_at ? format(new Date(prediction.created_at), 'MMM d, yyyy • HH:mm') : 'Unknown date'}
               </CardDescription>
             </CardHeader>
@@ -107,7 +179,7 @@ export function PredictionHistory({ onViewPrediction }: PredictionHistoryProps) 
                 )}
               </div>
             </CardContent>
-            <CardFooter>
+            <CardFooter className="flex gap-2">
               <Button 
                 variant="outline" 
                 size="sm" 
@@ -119,8 +191,25 @@ export function PredictionHistory({ onViewPrediction }: PredictionHistoryProps) 
                   prediction.metadata
                 )}
               >
-                <Eye className="h-3.5 w-3.5" />
                 View
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="gap-1"
+                onClick={() => handleExport(prediction)}
+              >
+                <Download className="h-3.5 w-3.5" />
+                Export
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm"
+                className="gap-1 hover:bg-destructive hover:text-destructive-foreground"
+                onClick={() => handleDelete(prediction.id)}
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                Delete
               </Button>
             </CardFooter>
           </Card>
