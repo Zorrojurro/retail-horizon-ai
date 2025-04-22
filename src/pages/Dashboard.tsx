@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Header } from "@/components/Header";
 import { FileUpload } from "@/components/FileUpload";
@@ -49,37 +50,52 @@ const Dashboard = () => {
       if (!forecastResponse || !forecastResponse.forecast || forecastResponse.forecast.length === 0) {
         console.log("No forecast data returned, using original data as fallback");
         setForecast(loadedData);
+        toast({
+          title: "Forecast Error",
+          description: "Could not generate forecast. Using original data instead.",
+          variant: "destructive"
+        });
       } else {
         console.log("Setting forecast data:", forecastResponse.forecast);
         setForecast(forecastResponse.forecast);
+        setModelMetadata(forecastResponse?.metadata || null);
+        
+        // Save the prediction to the database
+        try {
+          await supabase.from('predictions').insert({
+            filename,
+            data: loadedData,
+            forecast: forecastResponse?.forecast || loadedData,
+            metadata: forecastResponse?.metadata || null,
+            user_id: user?.id
+          });
+          
+          toast({
+            title: "Forecast generated",
+            description: "Your AI-powered forecast has been saved and is ready to view."
+          });
+        } catch (dbError) {
+          console.error('Error saving forecast to database:', dbError);
+          toast({
+            title: "Warning",
+            description: "Forecast generated but could not be saved to history.",
+            variant: "destructive"
+          });
+        }
       }
       
-      setModelMetadata(forecastResponse?.metadata || null);
       setDataLoaded(true);
-      
-      // Save the prediction to the database
-      await supabase.from('predictions').insert({
-        filename,
-        data: loadedData,
-        forecast: forecastResponse?.forecast || loadedData,
-        metadata: forecastResponse?.metadata || null,
-        user_id: user?.id
-      });
-      
-      toast({
-        title: "Forecast generated",
-        description: "Your AI-powered forecast has been saved and is ready to view."
-      });
     } catch (error) {
       console.error('Error generating forecast:', error);
       toast({
         title: "Forecasting Error",
-        description: "There was a problem generating your forecast. Please try again.",
+        description: "There was a problem generating your forecast. Please try again with a different CSV format.",
         variant: "destructive"
       });
       // Use original data as fallback
       console.log("Using original data as fallback due to error");
       setForecast(loadedData);
+      setDataLoaded(true);
     } finally {
       setIsForecastLoading(false);
       setIsLoading(false);

@@ -30,8 +30,12 @@ export function SalesChart({ data, productId }: SalesChartProps) {
     console.log("SalesChart received data:", data);
     console.log("Product ID to filter:", productId);
     
-    // Filter for the specific product
-    const productData = data.filter(item => String(item.product_id) === String(productId));
+    // More flexible product ID filtering - handle both string and number product IDs
+    const productData = data.filter(item => {
+      const itemProductId = String(item.product_id);
+      const targetProductId = String(productId);
+      return itemProductId === targetProductId;
+    });
     
     if (productData.length === 0) {
       console.log(`No data found for product ID: ${productId}`);
@@ -40,21 +44,31 @@ export function SalesChart({ data, productId }: SalesChartProps) {
     
     console.log(`Found ${productData.length} data points for product ID ${productId}`);
     
-    // Process and format the data for the chart
+    // Process and format the data for the chart with more robust handling
     const formattedData = productData.map(item => {
-      // Format date
-      const formattedDate = new Date(item.date).toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-      });
+      // Ensure date is properly handled - different CSV files might format dates differently
+      let formattedDate;
+      try {
+        formattedDate = new Date(item.date).toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+        });
+      } catch (e) {
+        console.log("Error formatting date:", e);
+        formattedDate = item.date; // Fallback to the original string
+      }
       
-      // Create a new object to avoid mutations
+      // Create a new object with all necessary properties, handling null/undefined gracefully
       return {
         ...item,
         date: formattedDate,
-        // Ensure proper handling of units_sold and forecast
-        units_sold: item.units_sold !== null ? Number(item.units_sold) : null,
-        forecast: item.forecast !== undefined ? Number(item.forecast) : null
+        // Ensure proper handling of units_sold and forecast - force conversion to numbers when possible
+        units_sold: item.units_sold !== null && item.units_sold !== undefined 
+          ? Number(item.units_sold) 
+          : null,
+        forecast: item.forecast !== undefined 
+          ? Number(item.forecast) 
+          : null
       };
     });
     

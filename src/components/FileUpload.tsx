@@ -61,11 +61,24 @@ export function FileUpload({ onDataLoaded, isLoading }: FileUploadProps) {
         try {
           const text = event.target?.result as string;
           const data = parseCSV(text);
-          onDataLoaded(data, selectedFile.name);
-          toast.success("Data loaded successfully");
+          
+          // Validate required fields
+          if (data.length > 0) {
+            const firstRow = data[0];
+            if (!firstRow.date || !firstRow.product_id) {
+              toast.error("CSV must contain at least 'date' and 'product_id' columns");
+              return;
+            }
+            
+            console.log("Parsed CSV data:", data);
+            onDataLoaded(data, selectedFile.name);
+            toast.success("Data loaded successfully");
+          } else {
+            toast.error("No data found in CSV file");
+          }
         } catch (error) {
           console.error("Error parsing CSV:", error);
-          toast.error("Failed to parse CSV file");
+          toast.error("Failed to parse CSV file. Make sure it's properly formatted.");
         }
       };
       reader.readAsText(selectedFile);
@@ -74,7 +87,13 @@ export function FileUpload({ onDataLoaded, isLoading }: FileUploadProps) {
 
   const parseCSV = (text: string): any[] => {
     const lines = text.split('\n');
-    const headers = lines[0].split(',');
+    if (lines.length < 2) {
+      throw new Error("CSV file must contain at least a header row and one data row");
+    }
+    
+    const headers = lines[0].split(',').map(header => header.trim());
+    
+    console.log("CSV headers:", headers);
     
     const result = [];
     
@@ -82,6 +101,11 @@ export function FileUpload({ onDataLoaded, isLoading }: FileUploadProps) {
       if (!lines[i].trim()) continue;
       
       const data = lines[i].split(',');
+      if (data.length !== headers.length) {
+        console.warn(`Line ${i} has ${data.length} fields, expected ${headers.length}. Line: ${lines[i]}`);
+        continue; // Skip malformed lines
+      }
+      
       const obj: any = {};
       
       for (let j = 0; j < headers.length; j++) {
@@ -94,7 +118,20 @@ export function FileUpload({ onDataLoaded, isLoading }: FileUploadProps) {
         }
       }
       
+      // Ensure required fields are present
+      if (!obj.product_id) {
+        obj.product_id = `unknown_${i}`;
+      }
+      
+      if (!obj.product_name) {
+        obj.product_name = `Product ${obj.product_id}`;
+      }
+      
       result.push(obj);
+    }
+    
+    if (result.length === 0) {
+      throw new Error("No valid data rows found in CSV");
     }
     
     return result;
@@ -118,7 +155,8 @@ export function FileUpload({ onDataLoaded, isLoading }: FileUploadProps) {
       <CardHeader>
         <CardTitle className="text-xl">Upload Sales Data</CardTitle>
         <CardDescription>
-          Upload a CSV file with your historical sales data to generate forecasts
+          Upload a CSV file with your historical sales data to generate forecasts.
+          Make sure your CSV includes at least these columns: date, product_id, product_name, units_sold
         </CardDescription>
       </CardHeader>
       <CardContent>

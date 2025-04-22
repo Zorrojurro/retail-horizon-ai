@@ -67,82 +67,105 @@ serve(async (req) => {
     }
     
     console.log("Received data for forecasting:", data.length, "data points");
+    console.log("Sample data point:", JSON.stringify(data[0]));
     
-    // Extract necessary data
+    // Validate required fields are present
+    if (!data[0].date || !data[0].product_id) {
+      throw new Error("Missing required fields in data. Each item must have at least 'date' and 'product_id'.");
+    }
+    
+    // Extract necessary data with more robust handling for missing fields
     const salesData = data.map(item => ({
       date: new Date(item.date),
-      units_sold: Number(item.units_sold),
-      price: Number(item.price),
-      competitor_price: Number(item.competitor_price),
-      promotion: item.promotion === "Yes",
+      units_sold: Number(item.units_sold || 0),
+      price: Number(item.price || 0),
+      competitor_price: Number(item.competitor_price || 0),
+      promotion: item.promotion === "Yes" || item.promotion === true,
       product_id: item.product_id,
-      product_name: item.product_name,
+      product_name: item.product_name || `Product ${item.product_id}`,
       season: item.season || "Regular"
     }));
     
     // Sort by date
     salesData.sort((a, b) => a.date.getTime() - b.date.getTime());
     
-    // Prepare forecast data
-    const forecast = [];
-    const lastDate = salesData[salesData.length - 1].date;
-    const lastPrice = salesData[salesData.length - 1].price;
-    const lastCompetitorPrice = salesData[salesData.length - 1].competitor_price;
-    const unitsSoldHistory = salesData.map(d => d.units_sold);
+    // Group data by product_id
+    const productGroups: Record<string, any[]> = {};
+    for (const item of salesData) {
+      const pid = String(item.product_id);
+      if (!productGroups[pid]) {
+        productGroups[pid] = [];
+      }
+      productGroups[pid].push(item);
+    }
     
-    // Basic forecasting parameters
-    const shortTermWindow = 4;  // 4-week trends
-    const mediumTermWindow = 12; // 12-week trends
-    const priceSensitivity = 0.8; // How much price changes affect demand
-    const competitiveSensitivity = 0.6; // How much competitor prices affect demand
-    const seasonalSensitivity = 1.2; // How much seasonal factors affect demand
-    const trendWeight = 0.7; // Weight for trend component
+    // Generate forecast for each product
+    const allForecasts = [];
     
-    // Calculate short-term and medium-term trends
-    const shortTermSMA = calculateSMA(unitsSoldHistory, shortTermWindow);
-    const mediumTermSMA = calculateSMA(unitsSoldHistory, mediumTermWindow);
-    
-    // Determine trend direction (positive or negative)
-    const trendFactor = shortTermSMA / mediumTermSMA;
-    
-    // Generate forecast for the next 12 weeks
-    for (let i = 1; i <= 12; i++) {
-      const forecastDate = new Date(lastDate);
-      forecastDate.setDate(forecastDate.getDate() + i * 7); // Weekly forecast
+    for (const productId in productGroups) {
+      const productData = productGroups[productId];
+      const lastDate = productData[productData.length - 1].date;
+      const lastPrice = productData[productData.length - 1].price;
+      const lastCompetitorPrice = productData[productData.length - 1].competitor_price;
+      const unitsSoldHistory = productData.map(d => d.units_sold);
       
-      // Get month-based seasonal factor (Indian market)
-      const monthIndex = forecastDate.getMonth();
-      const seasonalFactor = indianSeasonalFactors[monthIndex];
+      // Basic forecasting parameters
+      const shortTermWindow = Math.min(4, productData.length);  // 4-week trends (or less if not enough data)
+      const mediumTermWindow = Math.min(12, productData.length); // 12-week trends (or less if not enough data)
+      const priceSensitivity = 0.8; // How much price changes affect demand
+      const competitiveSensitivity = 0.6; // How much competitor prices affect demand
+      const seasonalSensitivity = 1.2; // How much seasonal factors affect demand
+      const trendWeight = 0.7; // Weight for trend component
       
-      // Apply festival boost if applicable
-      const festivalBoost = isIndianFestivalPeriod(forecastDate) ? 1.3 : 1.0;
+      // Calculate short-term and medium-term trends (with safety checks)
+      const shortTermSMA = calculateSMA(unitsSoldHistory, shortTermWindow);
+      const mediumTermSMA = calculateSMA(unitsSoldHistory, mediumTermWindow);
       
-      // Base forecast using exponential trend
-      let forecastedSales = shortTermSMA * Math.pow(trendFactor, i * trendWeight);
+      // Determine trend direction (positive or negative)
+      const trendFactor = mediumTermSMA > 0 ? shortTermSMA / mediumTermSMA : 1;
       
-      // Apply seasonal and festival adjustments
-      forecastedSales *= seasonalFactor * seasonalSensitivity;
-      forecastedSales *= festivalBoost;
-      
-      // Price adjustment (assumes price stays the same as last known)
-      const priceRatio = 1.0; // If price changes, this would be newPrice/lastPrice
-      forecastedSales *= Math.pow(priceRatio, -priceSensitivity);
-      
-      // Add some randomness to make it realistic (±5%)
-      const randomFactor = 0.95 + Math.random() * 0.1;
-      forecastedSales *= randomFactor;
-      
-      forecast.push({
-        date: forecastDate.toISOString(),
-        units_sold: null, // No actual sales for forecast period
-        forecast: Math.round(forecastedSales),
-        price: lastPrice,
-        competitor_price: lastCompetitorPrice,
-        promotion: "No",
-        product_id: salesData[0].product_id,
-        product_name: salesData[0].product_name,
-        season: salesData[0].season
-      });
+      // Generate forecast for the next 12 weeks
+      for (let i = 1; i <= 12; i++) {
+        const forecastDate = new Date(lastDate);
+        forecastDate.setDate(forecastDate.getDate() + i * 7); // Weekly forecast
+        
+        // Get month-based seasonal factor (Indian market)
+        const monthIndex = forecastDate.getMonth();
+        const seasonalFactor = indianSeasonalFactors[monthIndex];
+        
+        // Apply festival boost if applicable
+        const festivalBoost = isIndianFestivalPeriod(forecastDate) ? 1.3 : 1.0;
+        
+        // Base forecast using exponential trend
+        let forecastedSales = shortTermSMA * Math.pow(trendFactor, i * trendWeight);
+        
+        // Apply seasonal and festival adjustments
+        forecastedSales *= seasonalFactor * seasonalSensitivity;
+        forecastedSales *= festivalBoost;
+        
+        // Price adjustment (assumes price stays the same as last known)
+        const priceRatio = 1.0; // If price changes, this would be newPrice/lastPrice
+        forecastedSales *= Math.pow(priceRatio, -priceSensitivity);
+        
+        // Add some randomness to make it realistic (±5%)
+        const randomFactor = 0.95 + Math.random() * 0.1;
+        forecastedSales *= randomFactor;
+        
+        // Ensure forecast is a positive number
+        forecastedSales = Math.max(0, forecastedSales);
+        
+        allForecasts.push({
+          date: forecastDate.toISOString(),
+          units_sold: null, // No actual sales for forecast period
+          forecast: Math.round(forecastedSales),
+          price: lastPrice,
+          competitor_price: lastCompetitorPrice,
+          promotion: "No",
+          product_id: productId,
+          product_name: productData[0].product_name,
+          season: productData[0].season
+        });
+      }
     }
     
     // Return combined historical + forecast data
@@ -152,10 +175,10 @@ serve(async (req) => {
         date: item.date.toISOString(),
         forecast: null
       })),
-      ...forecast
+      ...allForecasts
     ];
     
-    console.log("Forecast complete. Generated", forecast.length, "data points");
+    console.log("Forecast complete. Generated", allForecasts.length, "data points");
     
     return new Response(JSON.stringify({ 
       forecast: result,
