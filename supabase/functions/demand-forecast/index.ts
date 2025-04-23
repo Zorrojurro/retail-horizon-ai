@@ -199,11 +199,15 @@ serve(async (req) => {
     console.log("Received data for forecasting:", data.length, "data points");
     
     // More flexible field validation - check for existence of required columns or alternatives
-    const hasDate = data[0].date !== undefined;
-    const hasProductId = data[0].product_id !== undefined || data[0].id !== undefined || 
-                         data[0].product !== undefined || data[0].item_id !== undefined;
-    const hasSalesData = data[0].units_sold !== undefined || data[0].sales !== undefined || 
-                         data[0].quantity !== undefined || data[0].units !== undefined;
+    const hasDate = data[0].date !== undefined && data[0].date !== null && data[0].date !== "";
+    const hasProductId = (
+      data[0].product_id !== undefined || data[0].id !== undefined ||
+      data[0].product !== undefined || data[0].item_id !== undefined
+    );
+    const hasSalesData = (
+      data[0].units_sold !== undefined || data[0].sales !== undefined ||
+      data[0].quantity !== undefined || data[0].units !== undefined
+    );
     
     if (!hasDate || !hasProductId || !hasSalesData) {
       const missingFields = [];
@@ -214,45 +218,99 @@ serve(async (req) => {
       throw new Error(`Missing required fields in data: ${missingFields.join(", ")}`);
     }
     
-    // Extract necessary data with more robust handling for missing fields
-    const salesData = data.map(item => {
-      // Handle different field names for the same concepts
-      const productId = String(item.product_id || item.id || item.product || item.item_id || 'unknown');
-      const unitsSold = Number(item.units_sold || item.sales || item.quantity || item.units || 0);
-      
-      // Extract optional fields with fallbacks
-      const price = Number(item.price || item.unit_price || item.selling_price || 0);
-      const competitorPrice = Number(item.competitor_price || item.comp_price || 0);
-      const category = String(item.category || item.product_category || item.type || "default").toLowerCase();
-      const region = String(item.region || item.market || item.location || "default").toLowerCase();
-      
-      // Parse date safely
-      let dateObj;
-      try {
-        dateObj = new Date(item.date);
-        // Check if the date is valid
-        if (isNaN(dateObj.getTime())) {
-          console.warn(`Invalid date format: ${item.date}, using current date`);
-          dateObj = new Date();
+    // Robustly extract and normalize necessary data
+    const salesData = data
+      .map(item => {
+        // --- Numeric values ---
+        // Treat null, undefined, and blank/empty ("") as 0 for numbers
+        function safeNumber(val: any, fallback = 0) {
+          if (val === undefined || val === null || val === '') return fallback;
+          const n = Number(val);
+          return isNaN(n) ? fallback : n;
         }
-      } catch (e) {
-        console.warn(`Error parsing date: ${item.date}, using current date`);
-        dateObj = new Date();
-      }
-      
-      return {
-        date: dateObj,
-        units_sold: unitsSold,
-        price: price,
-        competitor_price: competitorPrice,
-        promotion: item.promotion === "Yes" || item.promotion === true || item.promotion === 1,
-        product_id: productId,
-        product_name: item.product_name || `Product ${productId}`,
-        category: category,
-        region: region,
-        season: getIndianSeason(dateObj)
-      };
-    });
+        // --- String/text values ---
+        // Treat null, undefined, and blank/empty ("") as fallback string
+        function safeString(val: any, fallback = "unknown") {
+          if (val === undefined || val === null || val === '') return fallback;
+          return String(val);
+        }
+        // --- Boolean for promotion ---
+        function safePromotion(val: any): boolean {
+          if (val === undefined || val === null || val === '') return false;
+          if (typeof val === "boolean") return val;
+          if (typeof val === "number") return val === 1;
+          if (typeof val === "string") {
+            const str = val.trim().toLowerCase();
+            return str === "yes" || str === "true" || str === "1";
+          }
+          return false;
+        }
+
+        // -- Parse fields, handling null, blank, and fallback --
+        const productId = safeString(
+          item.product_id ?? item.id ?? item.product ?? item.item_id,
+          "unknown"
+        );
+        const unitsSold = safeNumber(
+          item.units_sold ?? item.sales ?? item.quantity ?? item.units,
+          0
+        );
+        const price = safeNumber(
+          item.price ?? item.unit_price ?? item.selling_price, 0
+        );
+        const competitorPrice = safeNumber(
+          item.competitor_price ?? item.comp_price, 0
+        );
+        const category = safeString(
+          item.category ?? item.product_category ?? item.type,
+          "default"
+        ).toLowerCase();
+        const region = safeString(
+          item.region ?? item.market ?? item.location,
+          "default"
+        ).toLowerCase();
+        const promotion = safePromotion(item.promotion);
+
+        // -- Parse date safely --
+        let dateObj;
+        if (item.date === null || item.date === undefined || item.date === "") {
+          // If totally missing, use current date (may not make sense, but prevents errors)
+          dateObj = new Date();
+        } else {
+          try {
+            dateObj = new Date(item.date);
+            // Check if the date is valid
+            if (isNaN(dateObj.getTime())) {
+              console.warn(`Invalid date format: ${item.date}, using current date`);
+              dateObj = new Date();
+            }
+          } catch (e) {
+            console.warn(`Error parsing date: ${item.date}, using current date`);
+            dateObj = new Date();
+          }
+        }
+
+        return {
+          date: dateObj,
+          units_sold: unitsSold,
+          price: price,
+          competitor_price: competitorPrice,
+          promotion: promotion,
+          product_id: productId,
+          product_name: safeString(item.product_name, `Product ${productId}`),
+          category: category,
+          region: region,
+          season: getIndianSeason(dateObj)
+        };
+      })
+      // Remove rows with missing/invalid critical fields (date or product_id)
+      .filter(row =>
+        row.product_id !== undefined
+        && row.product_id !== null
+        && row.product_id !== ''
+        && row.units_sold !== undefined
+        && row.date !== undefined
+      );
     
     // Sort by date
     salesData.sort((a, b) => a.date.getTime() - b.date.getTime());
