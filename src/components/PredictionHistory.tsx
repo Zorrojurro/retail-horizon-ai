@@ -34,8 +34,12 @@ export function PredictionHistory({ onViewPrediction }: PredictionHistoryProps) 
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
-      console.log("Predictions fetched:", data?.length || 0, "records");
+      if (error) {
+        console.error("Error fetching predictions:", error);
+        throw error;
+      }
+      
+      console.log("Predictions fetched:", data?.length || 0, "records", data);
       setPredictions(data || []);
     } catch (error) {
       console.error('Error fetching predictions:', error);
@@ -108,17 +112,46 @@ export function PredictionHistory({ onViewPrediction }: PredictionHistoryProps) 
 
   const handleExport = (prediction: any) => {
     // Combine actual and forecast data
-    const exportData = prediction.data.map((item: any, index: number) => {
-      const forecastItem = prediction.forecast[index] || {};
-      return {
-        date: item.date,
-        product_id: item.product_id,
-        product_name: item.product_name,
-        price: item.price,
-        competitor_price: item.competitor_price,
-        units_sold: item.units_sold,
-        forecast_units: forecastItem.forecast || '',
-      };
+    const exportData = [];
+    
+    // Add all data points (actual data)
+    if (prediction.data && Array.isArray(prediction.data)) {
+      for (const item of prediction.data) {
+        const exportItem: any = {
+          date: item.date,
+          product_id: item.product_id || '',
+          product_name: item.product_name || '',
+          price: item.price || 0,
+          competitor_price: item.competitor_price || 0,
+          units_sold: item.units_sold || 0,
+          forecast_units: '' // Empty for actual data
+        };
+        exportData.push(exportItem);
+      }
+    }
+    
+    // Add all forecast data points
+    if (prediction.forecast && Array.isArray(prediction.forecast)) {
+      for (const item of prediction.forecast) {
+        // Only add forecast items that are not in the original data (have null units_sold)
+        if (item.units_sold === null) {
+          const exportItem: any = {
+            date: item.date,
+            product_id: item.product_id || '',
+            product_name: item.product_name || '',
+            price: item.price || 0,
+            competitor_price: item.competitor_price || 0,
+            units_sold: '',
+            forecast_units: item.forecast || 0
+          };
+          exportData.push(exportItem);
+        }
+      }
+    }
+
+    // Sort by date
+    exportData.sort((a, b) => {
+      return new Date(a.date).getTime() - new Date(b.date).getTime();
     });
 
     // Convert to CSV
@@ -128,7 +161,7 @@ export function PredictionHistory({ onViewPrediction }: PredictionHistoryProps) 
       ...exportData.map((row: any) => [
         row.date,
         row.product_id,
-        `"${row.product_name}"`,
+        `"${row.product_name.replace(/"/g, '""')}"`, // Escape quotes in CSV
         row.price,
         row.competitor_price,
         row.units_sold,

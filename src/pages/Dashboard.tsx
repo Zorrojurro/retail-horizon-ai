@@ -61,19 +61,26 @@ const Dashboard = () => {
         setModelMetadata(forecastResponse?.metadata || null);
         
         // Save the prediction to the database
-        try {
-          if (user) {
-            console.log("Saving prediction to database for user:", user.id);
-            const { data: savedPrediction, error: saveError } = await supabase.from('predictions').insert({
-              filename,
-              data: loadedData,
-              forecast: forecastResponse?.forecast || loadedData,
-              metadata: forecastResponse?.metadata || null,
-              user_id: user?.id
-            }).select();
+        if (user) {
+          console.log("Saving prediction to database for user:", user.id);
+          try {
+            const { data: savedPrediction, error: saveError } = await supabase
+              .from('predictions')
+              .insert({
+                filename,
+                data: loadedData,
+                forecast: forecastResponse.forecast,
+                metadata: forecastResponse?.metadata || null,
+                user_id: user.id
+              });
             
             if (saveError) {
               console.error("Error saving prediction:", saveError);
+              toast({
+                title: "Warning",
+                description: "Forecast generated but could not be saved to history.",
+                variant: "destructive"
+              });
               throw saveError;
             }
             
@@ -83,20 +90,20 @@ const Dashboard = () => {
               title: "Forecast generated",
               description: "Your AI-powered forecast has been saved and is ready to view."
             });
-          } else {
-            // For non-logged in users, just show the forecast without saving
-            console.log("User not logged in, not saving prediction");
+          } catch (dbError: any) {
+            console.error('Error saving forecast to database:', dbError);
             toast({
-              title: "Forecast generated",
-              description: "Your AI-powered forecast is ready to view. Log in to save your forecasts."
+              title: "Warning",
+              description: "Forecast generated but could not be saved to history: " + dbError.message,
+              variant: "destructive"
             });
           }
-        } catch (dbError) {
-          console.error('Error saving forecast to database:', dbError);
+        } else {
+          // For non-logged in users, just show the forecast without saving
+          console.log("User not logged in, not saving prediction");
           toast({
-            title: "Warning",
-            description: "Forecast generated but could not be saved to history.",
-            variant: "destructive"
+            title: "Forecast generated",
+            description: "Your AI-powered forecast is ready to view. Log in to save your forecasts."
           });
         }
       }
