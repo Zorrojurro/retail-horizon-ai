@@ -30,7 +30,6 @@ const Dashboard = () => {
     setData(loadedData);
     
     try {
-      // Call the demand forecasting edge function
       setIsForecastLoading(true);
       
       console.log("Sending data to forecast function:", loadedData);
@@ -46,7 +45,9 @@ const Dashboard = () => {
       
       console.log("Received forecast response:", forecastResponse);
       
-      // If we don't have a proper forecast response, use original data as fallback
+      // Improved metadata handling
+      const forecastMetadata = forecastResponse?.metadata || null;
+      
       if (!forecastResponse || !forecastResponse.forecast || forecastResponse.forecast.length === 0) {
         console.log("No forecast data returned, using original data as fallback");
         setForecast(loadedData);
@@ -58,7 +59,7 @@ const Dashboard = () => {
       } else {
         console.log("Setting forecast data:", forecastResponse.forecast);
         setForecast(forecastResponse.forecast);
-        setModelMetadata(forecastResponse?.metadata || null);
+        setModelMetadata(forecastMetadata);
         
         // Save the prediction to the database
         if (user) {
@@ -70,7 +71,7 @@ const Dashboard = () => {
                 filename,
                 data: loadedData,
                 forecast: forecastResponse.forecast,
-                metadata: forecastResponse?.metadata || null,
+                metadata: forecastMetadata, // Explicitly save metadata
                 user_id: user.id
               });
             

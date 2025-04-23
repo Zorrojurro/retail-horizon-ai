@@ -16,6 +16,7 @@ export type Database = {
           filename: string
           forecast: Json
           id: string
+          metadata: Json | null
           user_id: string | null
         }
         Insert: {
@@ -24,6 +25,7 @@ export type Database = {
           filename: string
           forecast: Json
           id?: string
+          metadata?: Json | null
           user_id?: string | null
         }
         Update: {
@@ -32,6 +34,7 @@ export type Database = {
           filename?: string
           forecast?: Json
           id?: string
+          metadata?: Json | null
           user_id?: string | null
         }
         Relationships: []
