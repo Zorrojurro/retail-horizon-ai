@@ -55,17 +55,17 @@ export function ProductCard({ product, productId, forecast, onExport }: ProductC
     <Card>
       <CardHeader className="pb-2">
         <CardTitle className="text-lg">Product Details</CardTitle>
-        <CardDescription>{product[0].product_name}</CardDescription>
+        <CardDescription>{product[0]?.product_name || 'Product'}</CardDescription>
       </CardHeader>
       <CardContent>
         <div className="space-y-2">
           <div className="flex justify-between items-center">
             <span className="text-sm text-muted-foreground">Current price:</span>
-            <span className="font-medium">₹{product[product.length-1].price}</span>
+            <span className="font-medium">₹{product[product.length-1]?.price || 0}</span>
           </div>
           <div className="flex justify-between items-center">
             <span className="text-sm text-muted-foreground">Competitor price:</span>
-            <span className="font-medium">₹{product[product.length-1].competitor_price}</span>
+            <span className="font-medium">₹{product[product.length-1]?.competitor_price || 0}</span>
           </div>
           <Button 
             variant="outline" 

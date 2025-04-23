@@ -63,13 +63,21 @@ const Dashboard = () => {
         // Save the prediction to the database
         try {
           if (user) {
-            await supabase.from('predictions').insert({
+            console.log("Saving prediction to database for user:", user.id);
+            const { data: savedPrediction, error: saveError } = await supabase.from('predictions').insert({
               filename,
               data: loadedData,
               forecast: forecastResponse?.forecast || loadedData,
               metadata: forecastResponse?.metadata || null,
               user_id: user?.id
-            });
+            }).select();
+            
+            if (saveError) {
+              console.error("Error saving prediction:", saveError);
+              throw saveError;
+            }
+            
+            console.log("Prediction saved successfully:", savedPrediction);
             
             toast({
               title: "Forecast generated",
@@ -77,6 +85,7 @@ const Dashboard = () => {
             });
           } else {
             // For non-logged in users, just show the forecast without saving
+            console.log("User not logged in, not saving prediction");
             toast({
               title: "Forecast generated",
               description: "Your AI-powered forecast is ready to view. Log in to save your forecasts."

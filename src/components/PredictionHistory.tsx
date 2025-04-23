@@ -27,6 +27,7 @@ export function PredictionHistory({ onViewPrediction }: PredictionHistoryProps) 
     }
 
     try {
+      console.log("Fetching predictions for user ID:", user.id);
       const { data, error } = await supabase
         .from('predictions')
         .select('*')
@@ -34,6 +35,7 @@ export function PredictionHistory({ onViewPrediction }: PredictionHistoryProps) 
         .order('created_at', { ascending: false });
 
       if (error) throw error;
+      console.log("Predictions fetched:", data?.length || 0, "records");
       setPredictions(data || []);
     } catch (error) {
       console.error('Error fetching predictions:', error);
@@ -46,6 +48,33 @@ export function PredictionHistory({ onViewPrediction }: PredictionHistoryProps) 
       setIsLoading(false);
     }
   };
+
+  // Set up real-time subscription for predictions table
+  useEffect(() => {
+    if (!user) return;
+    
+    console.log("Setting up real-time subscription for predictions");
+    const channel = supabase
+      .channel('prediction-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'predictions',
+          filter: `user_id=eq.${user.id}`
+        },
+        (payload) => {
+          console.log("Real-time prediction update received:", payload);
+          fetchPredictions();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user]);
 
   useEffect(() => {
     fetchPredictions();
